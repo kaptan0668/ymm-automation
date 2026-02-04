@@ -1,0 +1,79 @@
+﻿services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ymm
+      POSTGRES_USER: ymm
+      POSTGRES_PASSWORD: ymm
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backend:
+    image: ghcr.io/kaptan0668/ymm-backend:latest
+    environment:
+      DJANGO_SETTINGS_MODULE: app.settings
+      DATABASE_URL: postgres://ymm:ymm@db:5432/ymm
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: ymm-files
+      MINIO_SECURE: "false"
+      JWT_SECRET: change-me
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - db
+      - redis
+      - minio
+    pull_policy: always
+
+  worker:
+    image: ghcr.io/kaptan0668/ymm-backend:latest
+    command: celery -A app worker -l info
+    environment:
+      DJANGO_SETTINGS_MODULE: app.settings
+      DATABASE_URL: postgres://ymm:ymm@db:5432/ymm
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: ymm-files
+      MINIO_SECURE: "false"
+      JWT_SECRET: change-me
+    depends_on:
+      - db
+      - redis
+      - minio
+    pull_policy: always
+
+  frontend:
+    image: ghcr.io/kaptan0668/ymm-frontend:latest
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+    pull_policy: always
+
+volumes:
+  db_data:
+  minio_data:
