@@ -1,6 +1,11 @@
 ﻿import "@/styles/globals.css";
 import Sidebar from "@/components/sidebar";
 
+export const metadata = {
+  title: "YMM Otomasyon",
+  description: "YMM süreçleri için yönetim ve raporlama paneli."
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">

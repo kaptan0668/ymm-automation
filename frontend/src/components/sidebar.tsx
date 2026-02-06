@@ -1,8 +1,8 @@
 ﻿import Link from "next/link";
 
 const items = [
-  { href: "/", label: "Dashboard" },
-  { href: "/customers", label: "Musteri" },
+  { href: "/", label: "Gösterge" },
+  { href: "/customers", label: "Müşteri" },
   { href: "/documents", label: "Evrak" },
   { href: "/reports", label: "Rapor" }
 ];
@@ -10,8 +10,8 @@ const items = [
 export default function Sidebar() {
   return (
     <aside className="w-64 border-r border-ink/10 bg-white/70 backdrop-blur px-6 py-8">
-      <div className="text-xl font-semibold">YMM Panel</div>
-      <div className="mt-2 text-sm text-ink/60">Yonetim ve raporlama</div>
+      <div className="text-xl font-semibold">YMM Otomasyon</div>
+      <div className="mt-2 text-sm text-ink/60">Yönetim ve raporlama</div>
       <nav className="mt-8 space-y-2">
         {items.map((item) => (
           <Link
@@ -24,7 +24,7 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="mt-10 rounded-lg bg-haze p-4 text-xs text-ink/70">
-        Sadece lokal IP portlari acik.
+        Sistem aktif. Dış erişim açık.
       </div>
     </aside>
   );

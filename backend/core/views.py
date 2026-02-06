@@ -122,9 +122,9 @@ class DocumentViewSet(AuditViewSet):
         data = request.data.copy()
         doc_type = data.get("doc_type")
         year = int(data.get("year"))
-        doc_no = next_document_number(doc_type, year)
+        doc_no, serial = next_document_number(doc_type, year)
         data["doc_no"] = doc_no
-        data["serial"] = int(doc_no.split("-")[-1])
+        data["serial"] = serial
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -139,10 +139,10 @@ class ReportViewSet(AuditViewSet):
         data = request.data.copy()
         report_type = data.get("report_type")
         year = int(data.get("year"))
-        report_no = next_report_number(report_type, year)
+        report_no, type_cum, year_serial = next_report_number(report_type, year)
         data["report_no"] = report_no
-        data["type_cumulative"] = int(report_no.split("-")[2].split("/")[0])
-        data["year_serial_all"] = int(report_no.split("-")[-1])
+        data["type_cumulative"] = type_cum
+        data["year_serial_all"] = year_serial
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

@@ -19,14 +19,14 @@ type Row = {
 
 const data: Row[] = [
   { name: "Alpha Ltd", status: "Aktif", updated: "2026-02-01" },
-  { name: "Beta AS", status: "Bekliyor", updated: "2026-01-22" },
-  { name: "Gamma Tasimacilik", status: "Aktif", updated: "2026-01-18" }
+  { name: "Beta AŞ", status: "Bekliyor", updated: "2026-01-22" },
+  { name: "Gamma Taşımacılık", status: "Aktif", updated: "2026-01-18" }
 ];
 
 const columns: ColumnDef<Row>[] = [
-  { accessorKey: "name", header: "Kayit" },
+  { accessorKey: "name", header: "Kayıt" },
   { accessorKey: "status", header: "Durum" },
-  { accessorKey: "updated", header: "Son Guncelleme" }
+  { accessorKey: "updated", header: "Son Güncelleme" }
 ];
 
 export default function DataTable() {
@@ -39,10 +39,10 @@ export default function DataTable() {
   return (
     <Card className="p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <Input placeholder="Filtre (placeholder)" className="md:max-w-xs" />
+        <Input placeholder="Filtre (örnek)" className="md:max-w-xs" />
         <div className="flex gap-2">
           <Button variant="outline">Filtre</Button>
-          <Button>Export</Button>
+          <Button>Dışa Aktar</Button>
         </div>
       </div>
       <div className="mt-4 overflow-hidden rounded-lg border border-ink/10 bg-white">

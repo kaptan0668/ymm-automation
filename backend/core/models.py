@@ -86,17 +86,18 @@ class ContractJob(AuditBase):
     payload = models.JSONField(default=dict)
 
 
-def next_document_number(doc_type: str, year: int) -> str:
+def next_document_number(doc_type: str, year: int) -> tuple[str, int]:
     with transaction.atomic():
         counter, _ = DocumentCounter.objects.select_for_update().get_or_create(
             doc_type=doc_type, year=year
         )
         counter.last_serial += 1
         counter.save()
-        return f"{doc_type}-{year}-{counter.last_serial:03d}"
+        serial = counter.last_serial
+        return f"{doc_type}-{year}-{serial:03d}", serial
 
 
-def next_report_number(report_type: str, year: int) -> str:
+def next_report_number(report_type: str, year: int) -> tuple[str, int, int]:
     with transaction.atomic():
         type_counter, _ = ReportCounterTypeCum.objects.select_for_update().get_or_create(
             report_type=report_type
@@ -109,7 +110,7 @@ def next_report_number(report_type: str, year: int) -> str:
         type_counter.save()
         year_counter.save()
 
-        return (
-            f"YMM-06105087-{type_counter.last_serial}/{year}-"
-            f"{year_counter.last_serial:03d}"
-        )
+        type_cum = type_counter.last_serial
+        year_serial = year_counter.last_serial
+        report_no = f"YMM-06105087-{type_cum}/{year}-{year_serial:03d}"
+        return report_no, type_cum, year_serial
