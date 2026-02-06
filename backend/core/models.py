@@ -34,6 +34,10 @@ class Customer(AuditBase):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = "Müşteri"
+        verbose_name_plural = "Müşteriler"
+
 class DocumentCounter(models.Model):
     doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES)
     year = models.IntegerField()
@@ -41,10 +45,16 @@ class DocumentCounter(models.Model):
 
     class Meta:
         unique_together = ("doc_type", "year")
+        verbose_name = "Evrak Sayacı"
+        verbose_name_plural = "Evrak Sayaçları"
 
 class ReportCounterYearAll(models.Model):
     year = models.IntegerField(unique=True)
     last_serial = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Yıl Bazlı Rapor Sayacı"
+        verbose_name_plural = "Yıl Bazlı Rapor Sayaçları"
 
 class ReportCounterTypeCum(models.Model):
     report_type = models.CharField(max_length=3, choices=REPORT_TYPES)
@@ -52,6 +62,8 @@ class ReportCounterTypeCum(models.Model):
 
     class Meta:
         unique_together = ("report_type",)
+        verbose_name = "Rapor Türü Kümülatif Sayacı"
+        verbose_name_plural = "Rapor Türü Kümülatif Sayaçları"
 
 class Document(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
@@ -59,6 +71,10 @@ class Document(AuditBase):
     year = models.IntegerField()
     serial = models.IntegerField()
     doc_no = models.CharField(max_length=32, unique=True)
+
+    class Meta:
+        verbose_name = "Evrak"
+        verbose_name_plural = "Evraklar"
 
 class Report(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
@@ -68,11 +84,19 @@ class Report(AuditBase):
     year_serial_all = models.IntegerField()
     report_no = models.CharField(max_length=64, unique=True)
 
+    class Meta:
+        verbose_name = "Rapor"
+        verbose_name_plural = "Raporlar"
+
 class File(AuditBase):
     filename = models.CharField(max_length=255)
     content_type = models.CharField(max_length=128)
     size = models.IntegerField()
     url = models.URLField()
+
+    class Meta:
+        verbose_name = "Dosya"
+        verbose_name_plural = "Dosyalar"
 
 class AuditLog(models.Model):
     model = models.CharField(max_length=128)
@@ -81,9 +105,17 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
 
+    class Meta:
+        verbose_name = "Denetim Kaydı"
+        verbose_name_plural = "Denetim Kayıtları"
+
 class ContractJob(AuditBase):
     status = models.CharField(max_length=32, default="pending")
     payload = models.JSONField(default=dict)
+
+    class Meta:
+        verbose_name = "Sözleşme İşi"
+        verbose_name_plural = "Sözleşme İşleri"
 
 
 def next_document_number(doc_type: str, year: int) -> tuple[str, int]:

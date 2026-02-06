@@ -47,12 +47,27 @@ class FileAdmin(AuditAdmin):
     search_fields = ("filename",)
 
 
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    readonly_fields = ("model", "object_id", "action", "timestamp", "actor")
+    list_display = ("model", "object_id", "action", "timestamp", "actor")
+    search_fields = ("model", "object_id", "actor__username")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(ContractJob)
 class ContractJobAdmin(AuditAdmin):
     list_display = ("id", "status", "created_at")
 
 
-admin.site.register(AuditLog)
 admin.site.register(DocumentCounter)
 admin.site.register(ReportCounterYearAll)
 admin.site.register(ReportCounterTypeCum)
