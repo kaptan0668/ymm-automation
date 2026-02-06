@@ -18,18 +18,32 @@ REPORT_TYPES = [
 ]
 
 class AuditBase(models.Model):
-    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_archived = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Oluşturan kullanıcı",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Güncelleyen kullanıcı",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturulma zamanı")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncellenme zamanı")
+    is_archived = models.BooleanField(default=False, verbose_name="Arşivlendi mi")
 
     class Meta:
         abstract = True
 
 class Customer(AuditBase):
-    name = models.CharField(max_length=255)
-    tax_no = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=255, verbose_name="Müşteri adı")
+    tax_no = models.CharField(max_length=32, unique=True, verbose_name="Vergi numarası")
 
     def __str__(self):
         return self.name
@@ -39,9 +53,9 @@ class Customer(AuditBase):
         verbose_name_plural = "Müşteriler"
 
 class DocumentCounter(models.Model):
-    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES)
-    year = models.IntegerField()
-    last_serial = models.IntegerField(default=0)
+    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak türü")
+    year = models.IntegerField(verbose_name="Yıl")
+    last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
         unique_together = ("doc_type", "year")
@@ -49,16 +63,16 @@ class DocumentCounter(models.Model):
         verbose_name_plural = "Evrak Sayaçları"
 
 class ReportCounterYearAll(models.Model):
-    year = models.IntegerField(unique=True)
-    last_serial = models.IntegerField(default=0)
+    year = models.IntegerField(unique=True, verbose_name="Yıl")
+    last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
         verbose_name = "Yıl Bazlı Rapor Sayacı"
         verbose_name_plural = "Yıl Bazlı Rapor Sayaçları"
 
 class ReportCounterTypeCum(models.Model):
-    report_type = models.CharField(max_length=3, choices=REPORT_TYPES)
-    last_serial = models.IntegerField(default=0)
+    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor türü")
+    last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
         unique_together = ("report_type",)
@@ -66,52 +80,58 @@ class ReportCounterTypeCum(models.Model):
         verbose_name_plural = "Rapor Türü Kümülatif Sayaçları"
 
 class Document(AuditBase):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES)
-    year = models.IntegerField()
-    serial = models.IntegerField()
-    doc_no = models.CharField(max_length=32, unique=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
+    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak türü")
+    year = models.IntegerField(verbose_name="Yıl")
+    serial = models.IntegerField(verbose_name="Seri")
+    doc_no = models.CharField(max_length=32, unique=True, verbose_name="Evrak numarası")
 
     class Meta:
         verbose_name = "Evrak"
         verbose_name_plural = "Evraklar"
 
 class Report(AuditBase):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    report_type = models.CharField(max_length=3, choices=REPORT_TYPES)
-    year = models.IntegerField()
-    type_cumulative = models.IntegerField()
-    year_serial_all = models.IntegerField()
-    report_no = models.CharField(max_length=64, unique=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
+    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor türü")
+    year = models.IntegerField(verbose_name="Yıl")
+    type_cumulative = models.IntegerField(verbose_name="Tür bazlı kümülatif sayaç")
+    year_serial_all = models.IntegerField(verbose_name="Yıl içi toplam sayaç")
+    report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarası")
 
     class Meta:
         verbose_name = "Rapor"
         verbose_name_plural = "Raporlar"
 
 class File(AuditBase):
-    filename = models.CharField(max_length=255)
-    content_type = models.CharField(max_length=128)
-    size = models.IntegerField()
-    url = models.URLField()
+    filename = models.CharField(max_length=255, verbose_name="Dosya adı")
+    content_type = models.CharField(max_length=128, verbose_name="İçerik türü")
+    size = models.IntegerField(verbose_name="Boyut (byte)")
+    url = models.URLField(verbose_name="URL")
 
     class Meta:
         verbose_name = "Dosya"
         verbose_name_plural = "Dosyalar"
 
 class AuditLog(models.Model):
-    model = models.CharField(max_length=128)
-    object_id = models.CharField(max_length=64)
-    action = models.CharField(max_length=32)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    model = models.CharField(max_length=128, verbose_name="Model")
+    object_id = models.CharField(max_length=64, verbose_name="Kayıt ID")
+    action = models.CharField(max_length=32, verbose_name="İşlem")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Zaman")
+    actor = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Kullanıcı",
+    )
 
     class Meta:
         verbose_name = "Denetim Kaydı"
         verbose_name_plural = "Denetim Kayıtları"
 
 class ContractJob(AuditBase):
-    status = models.CharField(max_length=32, default="pending")
-    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=32, default="pending", verbose_name="Durum")
+    payload = models.JSONField(default=dict, verbose_name="İçerik")
 
     class Meta:
         verbose_name = "Sözleşme İşi"

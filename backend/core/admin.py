@@ -14,6 +14,7 @@ from .models import (
 
 class AuditAdmin(admin.ModelAdmin):
     readonly_fields = ("created_by", "updated_by", "created_at", "updated_at", "is_archived")
+    exclude = ("created_by", "updated_by")
 
     def save_model(self, request, obj, form, change):
         if not obj.pk and hasattr(obj, "created_by"):
