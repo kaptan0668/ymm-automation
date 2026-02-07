@@ -17,6 +17,20 @@ REPORT_TYPES = [
     ("DGR", "DGR"),
 ]
 
+DOCUMENT_DIRECTIONS = [
+    ("GELEN", "Gelen"),
+    ("GIDEN", "Giden"),
+    ("DAHILI", "Dahili"),
+]
+
+DELIVERY_METHODS = [
+    ("KARGO", "Kargo"),
+    ("EPOSTA", "E-posta"),
+    ("ELDEN", "Elden"),
+    ("EBYS", "EBYS"),
+    ("DIGER", "Diğer"),
+]
+
 class AuditBase(models.Model):
     created_by = models.ForeignKey(
         User,
@@ -85,6 +99,25 @@ class Document(AuditBase):
     year = models.IntegerField(verbose_name="Yıl")
     serial = models.IntegerField(verbose_name="Seri")
     doc_no = models.CharField(max_length=32, unique=True, verbose_name="Evrak numarası")
+    direction = models.CharField(
+        max_length=8,
+        choices=DOCUMENT_DIRECTIONS,
+        default="GELEN",
+        verbose_name="Yön",
+    )
+    received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
+    reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayı")
+    sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen")
+    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="Alıcı")
+    subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
+    description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
+    delivery_method = models.CharField(
+        max_length=16,
+        choices=DELIVERY_METHODS,
+        null=True,
+        blank=True,
+        verbose_name="Teslim yöntemi",
+    )
 
     class Meta:
         verbose_name = "Evrak"
@@ -97,6 +130,25 @@ class Report(AuditBase):
     type_cumulative = models.IntegerField(verbose_name="Tür bazlı kümülatif sayaç")
     year_serial_all = models.IntegerField(verbose_name="Yıl içi toplam sayaç")
     report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarası")
+    direction = models.CharField(
+        max_length=8,
+        choices=DOCUMENT_DIRECTIONS,
+        default="GELEN",
+        verbose_name="Yön",
+    )
+    received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
+    reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayı")
+    sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen")
+    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="Alıcı")
+    subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
+    description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
+    delivery_method = models.CharField(
+        max_length=16,
+        choices=DELIVERY_METHODS,
+        null=True,
+        blank=True,
+        verbose_name="Teslim yöntemi",
+    )
 
     class Meta:
         verbose_name = "Rapor"
