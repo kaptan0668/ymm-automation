@@ -186,6 +186,14 @@ class File(AuditBase):
         related_name="files",
         verbose_name="Rapor",
     )
+    customer = models.ForeignKey(
+        "Customer",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Müşteri",
+    )
 
     class Meta:
         verbose_name = "Dosya"

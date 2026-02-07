@@ -118,6 +118,13 @@ class DocumentViewSet(AuditViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        customer = self.request.query_params.get("customer")
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        return qs
+
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         doc_type = data.get("doc_type")
@@ -132,6 +139,13 @@ class ReportViewSet(AuditViewSet):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        customer = self.request.query_params.get("customer")
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        return qs
+
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         report_type = data.get("report_type")
@@ -145,6 +159,19 @@ class ReportViewSet(AuditViewSet):
 class FileViewSet(AuditViewSet):
     queryset = File.objects.all()
     serializer_class = FileSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        document = self.request.query_params.get("document")
+        report = self.request.query_params.get("report")
+        customer = self.request.query_params.get("customer")
+        if document:
+            qs = qs.filter(document_id=document)
+        if report:
+            qs = qs.filter(report_id=report)
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        return qs
 
     @action(detail=False, methods=["post"])
     def upload(self, request):
@@ -171,6 +198,7 @@ class FileViewSet(AuditViewSet):
 
         document_id = request.data.get("document")
         report_id = request.data.get("report")
+        customer_id = request.data.get("customer")
 
         file_obj = File.objects.create(
             filename=upload.name,
@@ -179,6 +207,7 @@ class FileViewSet(AuditViewSet):
             url=url,
             document_id=document_id or None,
             report_id=report_id or None,
+            customer_id=customer_id or None,
             created_by=_actor(request),
             updated_by=_actor(request),
         )

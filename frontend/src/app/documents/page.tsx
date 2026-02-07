@@ -5,6 +5,7 @@ import { apiFetch, apiUpload } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 
 type DocumentRow = {
   id: number;
@@ -208,6 +209,7 @@ export default function DocumentsPage() {
                 <th className="px-4 py-3 font-medium">Konu</th>
                 <th className="px-4 py-3 font-medium">Gönderen</th>
                 <th className="px-4 py-3 font-medium">Alıcı</th>
+                <th className="px-4 py-3 font-medium">Detay</th>
               </tr>
             </thead>
             <tbody>
@@ -219,6 +221,11 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3">{item.subject}</td>
                   <td className="px-4 py-3">{item.sender}</td>
                   <td className="px-4 py-3">{item.recipient}</td>
+                  <td className="px-4 py-3">
+                    <Link className="text-terracotta" href={`/documents/${item.id}`}>
+                      Aç
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
