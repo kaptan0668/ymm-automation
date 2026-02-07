@@ -191,7 +191,8 @@ class FileViewSet(AuditViewSet):
             ExtraArgs={"ContentType": upload.content_type or "application/octet-stream"},
         )
 
-        endpoint = os.environ.get("MINIO_ENDPOINT", "localhost:9000")
+        public_endpoint = os.environ.get("MINIO_PUBLIC_ENDPOINT")
+        endpoint = public_endpoint or os.environ.get("MINIO_ENDPOINT", "localhost:9000")
         secure = os.environ.get("MINIO_SECURE", "false").lower() == "true"
         scheme = "https" if secure else "http"
         url = f"{scheme}://{endpoint}/{bucket}/{key}"
@@ -199,6 +200,17 @@ class FileViewSet(AuditViewSet):
         document_id = request.data.get("document")
         report_id = request.data.get("report")
         customer_id = request.data.get("customer")
+
+        if not customer_id and document_id:
+            try:
+                customer_id = Document.objects.get(id=document_id).customer_id
+            except Document.DoesNotExist:
+                customer_id = None
+        if not customer_id and report_id:
+            try:
+                customer_id = Report.objects.get(id=report_id).customer_id
+            except Report.DoesNotExist:
+                customer_id = None
 
         file_obj = File.objects.create(
             filename=upload.name,
