@@ -62,6 +62,7 @@ export default function ReportsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   async function load() {
+    setLoading(true);
     try {
       const [reports, custs] = await Promise.all([
         apiFetch<ReportRow[]>("/api/reports/"),
@@ -70,8 +71,9 @@ export default function ReportsPage() {
       setItems(reports);
       setCustomers(custs);
       setError(null);
-    } catch {
-      setError("Veriler yüklenemedi. Giriş yapmanız gerekebilir.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -122,8 +124,9 @@ export default function ReportsPage() {
       setDeliveryMethod("");
       await load();
       setNotice(`Rapor eklendi. Rapor No: ${rep.report_no}`);
-    } catch {
-      setNotice("Rapor eklenemedi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNotice(`Rapor eklenemedi: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -203,6 +206,9 @@ export default function ReportsPage() {
 
         <Button type="submit" disabled={!token || saving || !customerId || !year}>
           {saving ? "Kaydediliyor..." : "Rapor Ekle"}
+        </Button>
+        <Button type="button" variant="outline" onClick={load}>
+          Yenile
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}

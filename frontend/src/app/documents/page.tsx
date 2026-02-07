@@ -62,6 +62,7 @@ export default function DocumentsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   async function load() {
+    setLoading(true);
     try {
       const [docs, custs] = await Promise.all([
         apiFetch<DocumentRow[]>("/api/documents/"),
@@ -70,8 +71,9 @@ export default function DocumentsPage() {
       setItems(docs);
       setCustomers(custs);
       setError(null);
-    } catch {
-      setError("Veriler yüklenemedi. Giriş yapmanız gerekebilir.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -122,8 +124,9 @@ export default function DocumentsPage() {
       setDeliveryMethod("");
       await load();
       setNotice(`Evrak eklendi. Evrak No: ${doc.doc_no}`);
-    } catch {
-      setNotice("Evrak eklenemedi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNotice(`Evrak eklenemedi: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -203,6 +206,9 @@ export default function DocumentsPage() {
 
         <Button type="submit" disabled={!token || saving || !customerId || !year}>
           {saving ? "Kaydediliyor..." : "Evrak Ekle"}
+        </Button>
+        <Button type="button" variant="outline" onClick={load}>
+          Yenile
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
