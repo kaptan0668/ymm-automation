@@ -55,7 +55,7 @@ export default function DocumentDetailPage() {
   if (!doc) return <div>Loading...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print-area">
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -64,10 +64,10 @@ export default function DocumentDetailPage() {
             <div className="mt-1 text-sm text-ink/60">{doc.subject || "Konu yok"}</div>
           </div>
           <div className="flex items-center gap-2">
-            <Link className="text-sm text-terracotta" href={`/customers/${doc.customer}`}>
+            <Link className="text-sm text-terracotta print-hide" href={`/customers/${doc.customer}`}>
               Musteri Karti
             </Link>
-            <Button onClick={() => window.print()}>Yazdir</Button>
+            <Button className="print-hide" onClick={() => window.print()}>Yazdir</Button>
           </div>
         </div>
       </div>

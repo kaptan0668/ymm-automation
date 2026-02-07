@@ -1,4 +1,4 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -30,4 +30,16 @@ body::before {
               linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(247, 242, 234, 0.9));
   pointer-events: none;
   z-index: -1;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  aside, nav, .print-hide {
+    display: none !important;
+  }
+  .print-area {
+    display: block !important;
+  }
 }

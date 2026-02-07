@@ -1,4 +1,4 @@
-﻿import { getAccessToken } from "./auth";
+import { getAccessToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -11,6 +11,13 @@ function resolveApiBase() {
     return `${protocol}//${host}:18000`;
   }
   return "";
+}
+
+async function parseJsonSafe(res: Response) {
+  if (res.status === 204) return null;
+  const text = await res.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -33,7 +40,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error(text || res.statusText);
   }
 
-  return res.json() as Promise<T>;
+  return (await parseJsonSafe(res)) as T;
 }
 
 export async function apiUpload<T>(path: string, data: FormData): Promise<T> {
@@ -52,7 +59,7 @@ export async function apiUpload<T>(path: string, data: FormData): Promise<T> {
     const text = await res.text();
     throw new Error(text || res.statusText);
   }
-  return res.json() as Promise<T>;
+  return (await parseJsonSafe(res)) as T;
 }
 
 export async function login(username: string, password: string) {
