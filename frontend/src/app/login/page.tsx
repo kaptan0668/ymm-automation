@@ -23,7 +23,8 @@ export default function LoginPage() {
       setTokens(tokens);
       router.push("/customers");
     } catch (err) {
-      setError("Giriş başarısız. Kullanıcı adı veya şifre hatalı.");
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setError(`Giriş başarısız: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error ? <div className="text-sm text-red-600">{error}</div> : null}
+      {error ? <div className="text-sm text-red-600">{error}</div> : null}
         <Button disabled={loading} type="submit">
           {loading ? "Giriş yapılıyor..." : "Giriş yap"}
         </Button>

@@ -2,6 +2,17 @@ import { getAccessToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+function resolveApiBase() {
+  if (API_BASE) return API_BASE;
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href);
+    const host = url.hostname;
+    const protocol = url.protocol;
+    return `${protocol}//${host}:18000`;
+  }
+  return "";
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
@@ -11,7 +22,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}${path}`, {
     ...options,
     headers
   });
