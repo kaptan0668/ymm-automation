@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -51,27 +51,27 @@ export default function DocumentDetailPage() {
   }, [id]);
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!doc) return <div>Yükleniyor...</div>;
+  if (!doc) return <div>Yukleniyor...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">Evrak Detayý</h1>
+          <h1 className="text-3xl font-semibold">Evrak Detayi</h1>
           <p className="text-ink/60">{doc.doc_no}</p>
         </div>
-        <Button onClick={() => window.print()}>Yazdýr</Button>
+        <Button onClick={() => window.print()}>Yazdir</Button>
       </div>
 
       <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 text-sm">
         <div><b>Tarih:</b> {doc.received_date}</div>
-        <div><b>Tür:</b> {doc.doc_type}</div>
-        <div><b>Harici Sayý:</b> {doc.reference_no}</div>
-        <div><b>Gönderen:</b> {doc.sender}</div>
-        <div><b>Alýcý:</b> {doc.recipient}</div>
+        <div><b>Tur:</b> {doc.doc_type}</div>
+        <div><b>Harici Sayi:</b> {doc.reference_no}</div>
+        <div><b>Gonderen:</b> {doc.sender}</div>
+        <div><b>Alici:</b> {doc.recipient}</div>
         <div><b>Konu:</b> {doc.subject}</div>
         <div><b>Teslim:</b> {doc.delivery_method}</div>
-        <div><b>Açýklama:</b> {doc.description}</div>
+        <div><b>Aciklama:</b> {doc.description}</div>
       </div>
 
       <div>
