@@ -32,13 +32,13 @@ class CustomerAdmin(AuditAdmin):
 
 @admin.register(Document)
 class DocumentAdmin(AuditAdmin):
-    list_display = ("doc_no", "doc_type", "year", "direction", "customer", "is_archived")
+    list_display = ("doc_no", "doc_type", "year", "received_date", "customer", "is_archived")
     search_fields = ("doc_no", "customer__name", "sender", "recipient", "subject")
 
 
 @admin.register(Report)
 class ReportAdmin(AuditAdmin):
-    list_display = ("report_no", "report_type", "year", "direction", "customer", "is_archived")
+    list_display = ("report_no", "report_type", "year", "received_date", "customer", "is_archived")
     search_fields = ("report_no", "customer__name", "sender", "recipient", "subject")
 
 
