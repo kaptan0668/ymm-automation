@@ -33,7 +33,7 @@ const DELIVERY = [
   { value: "EPOSTA", label: "E-posta" },
   { value: "ELDEN", label: "Elden" },
   { value: "EBYS", label: "EBYS" },
-  { value: "DIGER", label: "Diðer" }
+  { value: "DIGER", label: "Diger" }
 ];
 
 export default function ReportsPage() {
