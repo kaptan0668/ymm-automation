@@ -117,17 +117,17 @@ export default function ContractsPage() {
       setPeriodEndMonth("");
       setPeriodEndYear("");
       await load();
-      setNotice("SÃ¶zleÅŸme yÃ¼klendi ve kart oluÅŸturuldu.");
+      setNotice("Sözleşme yüklendi ve kart oluşturuldu.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNotice(`YÃ¼klenemedi: ${msg}`);
+      setNotice(`Yüklenemedi: ${msg}`);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("SÃ¶zleÅŸme silinsin mi?")) return;
+    if (!confirm("Sözleşme silinsin mi?")) return;
     try {
       await apiFetch(`/api/contracts/${id}/`, { method: "DELETE" });
       await load();
@@ -149,24 +149,24 @@ export default function ContractsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold">SÃ¶zleÅŸmeler</h1>
-        <p className="text-ink/60">SÃ¶zleÅŸme listesi ve otomatik kartlar.</p>
+        <h1 className="text-3xl font-semibold">Sözleşmeler</h1>
+        <p className="text-ink/60">Sözleşme listesi ve otomatik kartlar.</p>
       </div>
 
       <form onSubmit={handleUpload} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         <Input placeholder="Vergi no (opsiyonel)" value={taxNo} onChange={(e) => setTaxNo(e.target.value)} />
-        <Input placeholder="MÃ¼ÅŸteri adÄ± (opsiyonel)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-        <Input placeholder="SÃ¶zleÅŸme no (opsiyonel)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
-        <Input type="date" placeholder="SÃ¶zleÅŸme tarihi (opsiyonel)" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
-        <Input placeholder="SÃ¶zleÅŸme tÃ¼rÃ¼ (opsiyonel)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
+        <Input placeholder="Müşteri adı (opsiyonel)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+        <Input placeholder="Sözleşme no (opsiyonel)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
+        <Input type="date" placeholder="Sözleşme tarihi (opsiyonel)" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
+        <Input placeholder="Sözleşme türü (opsiyonel)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
         <div className="flex gap-2">
           <select
             className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
             value={periodStartMonth}
             onChange={(e) => setPeriodStartMonth(e.target.value)}
           >
-            <option value="">DÃ¶nem baÅŸlangÄ±Ã§ ay</option>
+            <option value="">Dönem başlangıç ay</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -178,7 +178,7 @@ export default function ContractsPage() {
             value={periodStartYear}
             onChange={(e) => setPeriodStartYear(e.target.value)}
           >
-            <option value="">BaÅŸlangÄ±Ã§ yÄ±l</option>
+            <option value="">Başlangıç yıl</option>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -192,7 +192,7 @@ export default function ContractsPage() {
             value={periodEndMonth}
             onChange={(e) => setPeriodEndMonth(e.target.value)}
           >
-            <option value="">DÃ¶nem bitiÅŸ ay</option>
+            <option value="">Dönem bitiş ay</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -204,7 +204,7 @@ export default function ContractsPage() {
             value={periodEndYear}
             onChange={(e) => setPeriodEndYear(e.target.value)}
           >
-            <option value="">BitiÅŸ yÄ±l</option>
+            <option value="">Bitiş yıl</option>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -213,12 +213,12 @@ export default function ContractsPage() {
           </select>
         </div>
         <Button type="submit" disabled={!token || saving || !file}>
-          {saving ? "YÃ¼kleniyor..." : "SÃ¶zleÅŸme YÃ¼kle"}
+          {saving ? "Yükleniyor..." : "Sözleşme Yükle"}
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      {loading ? <div>YÃ¼kleniyor...</div> : null}
+      {loading ? <div>Yükleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
       {!loading && !error ? (
@@ -226,11 +226,11 @@ export default function ContractsPage() {
           <table className="w-full text-sm">
             <thead className="bg-haze text-left">
               <tr>
-                <th className="px-4 py-3 font-medium">SÃ¶zleÅŸme Tarihi</th>
-                <th className="px-4 py-3 font-medium">SÃ¶zleÅŸme No</th>
-                <th className="px-4 py-3 font-medium">MÃ¼ÅŸteri</th>
-                <th className="px-4 py-3 font-medium">DÃ¶nemi</th>
-                <th className="px-4 py-3 font-medium">SÃ¶zleÅŸme TÃ¼rÃ¼</th>
+                <th className="px-4 py-3 font-medium">Sözleşme Tarihi</th>
+                <th className="px-4 py-3 font-medium">Sözleşme No</th>
+                <th className="px-4 py-3 font-medium">Müşteri</th>
+                <th className="px-4 py-3 font-medium">Dönemi</th>
+                <th className="px-4 py-3 font-medium">Sözleşme Türü</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
@@ -245,7 +245,7 @@ export default function ContractsPage() {
                   <td className="px-4 py-3">{item.contract_type || "-"}</td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/contracts/${item.id}`}>
-                      KartÄ± GÃ¶r
+                      Kartı Gör
                     </Link>
                   </td>
                   {isStaff ? (
