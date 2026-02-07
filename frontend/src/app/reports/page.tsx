@@ -14,10 +14,17 @@ type ReportRow = {
   customer: number;
 };
 
+type Customer = {
+  id: number;
+  name: string;
+  tax_no: string;
+};
+
 const REPORT_TYPES = ["TT", "KDV", "OAR", "DGR"];
 
 export default function ReportsPage() {
   const [items, setItems] = useState<ReportRow[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState("");
@@ -28,8 +35,12 @@ export default function ReportsPage() {
 
   async function load() {
     try {
-      const data = await apiFetch<ReportRow[]>("/api/reports/");
-      setItems(data);
+      const [reports, custs] = await Promise.all([
+        apiFetch<ReportRow[]>("/api/reports/"),
+        apiFetch<Customer[]>("/api/customers/")
+      ]);
+      setItems(reports);
+      setCustomers(custs);
       setError(null);
     } catch {
       setError("Veriler yüklenemedi. Giriş yapmanız gerekebilir.");
@@ -75,11 +86,18 @@ export default function ReportsPage() {
       </div>
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
-        <Input
-          placeholder="Müşteri ID"
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
-        />
+        >
+          <option value="">Müşteri seç</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({c.tax_no})
+            </option>
+          ))}
+        </select>
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
           value={reportType}
