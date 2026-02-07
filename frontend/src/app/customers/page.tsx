@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, apiUpload } from "@/lib/api";
+import { apiFetch, apiUpload, me } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,11 +38,16 @@ export default function CustomersPage() {
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isStaff, setIsStaff] = useState(false);
 
   async function load() {
     try {
-      const data = await apiFetch<Customer[]>("/api/customers/");
+      const [data, meInfo] = await Promise.all([
+        apiFetch<Customer[]>("/api/customers/"),
+        me()
+      ]);
       setItems(data);
+      setIsStaff(Boolean(meInfo?.is_staff));
       setError(null);
     } catch (err) {
       setError("Veriler yÃ¼klenemedi. GiriÅŸ yapmanÄ±z gerekebilir.");
@@ -99,6 +104,17 @@ export default function CustomersPage() {
     }
   }
 
+  async function handleDelete(id: number) {
+    if (!confirm("MÃ¼ÅŸteri silinsin mi?")) return;
+    try {
+      await apiFetch(`/api/customers/${id}/`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      alert(`Silinemedi: ${msg}`);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -132,7 +148,8 @@ export default function CustomersPage() {
                 <th className="px-4 py-3 font-medium">MÃ¼ÅŸteri</th>
                 <th className="px-4 py-3 font-medium">Vergi No</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
-                <th className="px-4 py-3 font-medium">Duzenle</th>
+                <th className="px-4 py-3 font-medium">DÃ¼zenle</th>
+                {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -147,9 +164,14 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/customers/${item.id}?edit=1`}>
-                      Duzenle
+                      DÃ¼zenle
                     </Link>
                   </td>
+                  {isStaff ? (
+                    <td className="px-4 py-3">
+                      <button className="text-red-600" onClick={() => handleDelete(item.id)}>Sil</button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

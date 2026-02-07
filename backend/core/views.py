@@ -309,7 +309,7 @@ class ContractViewSet(AuditViewSet):
         customer, created = Customer.objects.get_or_create(
             tax_no=tax_no,
             defaults={
-                "name": parsed.get("customer_name") or "Bilinmeyen Musteri",
+                "name": parsed.get("customer_name") or f"Musteri {tax_no}",
                 "tax_office": parsed.get("tax_office"),
                 "address": parsed.get("address"),
                 "phone": parsed.get("phone"),
