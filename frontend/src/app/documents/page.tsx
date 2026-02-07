@@ -350,6 +350,7 @@ export default function DocumentsPage() {
                 <th className="px-4 py-3 font-medium">Musteri</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
+                <th className="px-4 py-3 font-medium">Duzenle</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
             </thead>
@@ -363,6 +364,11 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/documents/${item.id}`}>
                       Ac
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link className="text-terracotta" href={`/documents/${item.id}?edit=1`}>
+                      Duzenle
                     </Link>
                   </td>
                   {isStaff ? (

@@ -28,8 +28,17 @@ class DocumentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Tarih zorunludur.")
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("Geçmiş tarihli evrak girilemez.")
+            raise serializers.ValidationError("GeÃ§miÅŸ tarihli evrak girilemez.")
         return value
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        if instance:
+            locked_fields = ["customer", "doc_type", "year", "serial", "doc_no", "received_date"]
+            for field in locked_fields:
+                if field in attrs and attrs[field] != getattr(instance, field):
+                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
+        return attrs
 
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
@@ -53,7 +62,7 @@ class ReportSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Tarih zorunludur.")
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("Geçmiş tarihli rapor girilemez.")
+            raise serializers.ValidationError("GeÃ§miÅŸ tarihli rapor girilemez.")
         return value
 
     def validate(self, attrs):
@@ -64,13 +73,31 @@ class ReportSerializer(serializers.ModelSerializer):
         end_year = attrs.get("period_end_year", getattr(instance, "period_end_year", None))
 
         if not all([start_month, start_year, end_month, end_year]):
-            raise serializers.ValidationError("Dönem başlangıç ve bitiş bilgileri zorunludur.")
+            raise serializers.ValidationError("DÃ¶nem baÅŸlangÄ±Ã§ ve bitiÅŸ bilgileri zorunludur.")
 
         if not (1 <= int(start_month) <= 12 and 1 <= int(end_month) <= 12):
-            raise serializers.ValidationError("Ay bilgisi 1-12 aralığında olmalıdır.")
+            raise serializers.ValidationError("Ay bilgisi 1-12 aralÄ±ÄŸÄ±nda olmalÄ±dÄ±r.")
 
         if (end_year, end_month) < (start_year, start_month):
-            raise serializers.ValidationError("Dönem bitişi başlangıçtan önce olamaz.")
+            raise serializers.ValidationError("DÃ¶nem bitiÅŸi baÅŸlangÄ±Ã§tan Ã¶nce olamaz.")
+
+        if instance:
+            locked_fields = [
+                "customer",
+                "report_type",
+                "year",
+                "type_cumulative",
+                "year_serial_all",
+                "report_no",
+                "received_date",
+                "period_start_month",
+                "period_start_year",
+                "period_end_month",
+                "period_end_year",
+            ]
+            for field in locked_fields:
+                if field in attrs and attrs[field] != getattr(instance, field):
+                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
 
         return attrs
 
