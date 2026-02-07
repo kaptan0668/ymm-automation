@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -43,7 +43,7 @@ export default function DocumentDetailPage() {
         setDoc(d);
         setFiles(f);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
       }
     }
@@ -51,31 +51,31 @@ export default function DocumentDetailPage() {
   }, [id]);
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!doc) return <div>Yukleniyor...</div>;
+  if (!doc) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">Evrak Detayi</h1>
+          <h1 className="text-3xl font-semibold">Document Detail</h1>
           <p className="text-ink/60">{doc.doc_no}</p>
         </div>
-        <Button onClick={() => window.print()}>Yazdir</Button>
+        <Button onClick={() => window.print()}>Print</Button>
       </div>
 
       <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 text-sm">
-        <div><b>Tarih:</b> {doc.received_date}</div>
-        <div><b>Tur:</b> {doc.doc_type}</div>
-        <div><b>Harici Sayi:</b> {doc.reference_no}</div>
-        <div><b>Gonderen:</b> {doc.sender}</div>
-        <div><b>Alici:</b> {doc.recipient}</div>
-        <div><b>Konu:</b> {doc.subject}</div>
-        <div><b>Teslim:</b> {doc.delivery_method}</div>
-        <div><b>Aciklama:</b> {doc.description}</div>
+        <div><b>Date:</b> {doc.received_date}</div>
+        <div><b>Type:</b> {doc.doc_type}</div>
+        <div><b>Ref No:</b> {doc.reference_no}</div>
+        <div><b>Sender:</b> {doc.sender}</div>
+        <div><b>Recipient:</b> {doc.recipient}</div>
+        <div><b>Subject:</b> {doc.subject}</div>
+        <div><b>Delivery:</b> {doc.delivery_method}</div>
+        <div><b>Description:</b> {doc.description}</div>
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold">Ekler</h2>
+        <h2 className="text-xl font-semibold">Attachments</h2>
         <ul className="list-disc pl-5 text-sm">
           {files.map((f) => (
             <li key={f.id}>
