@@ -86,3 +86,10 @@ export async function me() {
     "/api/auth/me/"
   );
 }
+
+export async function changePassword(old_password: string, new_password: string) {
+  return apiFetch<{ status: string }>("/api/auth/change-password/", {
+    method: "POST",
+    body: JSON.stringify({ old_password, new_password })
+  });
+}
