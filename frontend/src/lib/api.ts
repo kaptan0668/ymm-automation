@@ -2,8 +2,20 @@ import { getAccessToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
-function resolveApiBase() {
+export function resolveApiBase() {
   if (API_BASE) return API_BASE;
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href);
+    const host = url.hostname;
+    const protocol = url.protocol;
+    return `${protocol}//${host}:18000`;
+  }
+  return "";
+}
+
+export function resolveAdminBase() {
+  const base = resolveApiBase();
+  if (base) return base;
   if (typeof window !== "undefined") {
     const url = new URL(window.location.href);
     const host = url.hostname;
