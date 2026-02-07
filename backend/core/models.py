@@ -1,4 +1,5 @@
 ﻿from django.db import models, transaction
+import os
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -16,6 +17,8 @@ REPORT_TYPES = [
     ("OAR", "OAR"),
     ("DGR", "DGR"),
 ]
+
+YMM_LICENSE_NO = os.environ.get("YMM_LICENSE_NO", "06105087")
 
 DELIVERY_METHODS = [
     ("KARGO", "Kargo"),
@@ -78,6 +81,13 @@ class ReportCounterYearAll(models.Model):
         verbose_name = "Yıl Bazlı Rapor Sayacı"
         verbose_name_plural = "Yıl Bazlı Rapor Sayaçları"
 
+class ReportCounterGlobal(models.Model):
+    last_serial = models.IntegerField(default=0, verbose_name="Son seri")
+
+    class Meta:
+        verbose_name = "Rapor Genel Kümülatif Sayacı"
+        verbose_name_plural = "Rapor Genel Kümülatif Sayaçları"
+
 class ReportCounterTypeCum(models.Model):
     report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor türü")
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
@@ -92,7 +102,7 @@ class Document(AuditBase):
     doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak türü")
     year = models.IntegerField(verbose_name="Yıl")
     serial = models.IntegerField(verbose_name="Seri")
-    doc_no = models.CharField(max_length=32, unique=True, verbose_name="Evrak numarası")
+    doc_no = models.CharField(max_length=64, unique=True, verbose_name="Evrak numarası")
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
     reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayı")
     sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen")
@@ -215,23 +225,21 @@ def next_document_number(doc_type: str, year: int) -> tuple[str, int]:
         counter.last_serial += 1
         counter.save()
         serial = counter.last_serial
-        return f"{doc_type}-{year}-{serial:03d}", serial
+        return f"YMM-{YMM_LICENSE_NO}-{doc_type}-{year}-{serial:03d}", serial
 
 
 def next_report_number(report_type: str, year: int) -> tuple[str, int, int]:
     with transaction.atomic():
-        type_counter, _ = ReportCounterTypeCum.objects.select_for_update().get_or_create(
-            report_type=report_type
-        )
+        global_counter, _ = ReportCounterGlobal.objects.select_for_update().get_or_create(id=1)
         year_counter, _ = ReportCounterYearAll.objects.select_for_update().get_or_create(
             year=year
         )
-        type_counter.last_serial += 1
+        global_counter.last_serial += 1
         year_counter.last_serial += 1
-        type_counter.save()
+        global_counter.save()
         year_counter.save()
 
-        type_cum = type_counter.last_serial
+        type_cum = global_counter.last_serial
         year_serial = year_counter.last_serial
-        report_no = f"YMM-06105087-{type_cum}/{year}-{year_serial:03d}"
+        report_no = f"YMM-{YMM_LICENSE_NO}-{type_cum}/{year}-{year_serial:03d}"
         return report_no, type_cum, year_serial
