@@ -1,4 +1,4 @@
-import { getAccessToken } from "./auth";
+﻿import { getAccessToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -33,6 +33,25 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error(text || res.statusText);
   }
 
+  return res.json() as Promise<T>;
+}
+
+export async function apiUpload<T>(path: string, data: FormData): Promise<T> {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const base = resolveApiBase();
+  const res = await fetch(`${base}${path}`, {
+    method: "POST",
+    body: data,
+    headers
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
   return res.json() as Promise<T>;
 }
 

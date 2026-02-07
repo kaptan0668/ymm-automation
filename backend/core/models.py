@@ -159,6 +159,22 @@ class File(AuditBase):
     content_type = models.CharField(max_length=128, verbose_name="İçerik türü")
     size = models.IntegerField(verbose_name="Boyut (byte)")
     url = models.URLField(verbose_name="URL")
+    document = models.ForeignKey(
+        "Document",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Evrak",
+    )
+    report = models.ForeignKey(
+        "Report",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Rapor",
+    )
 
     class Meta:
         verbose_name = "Dosya"

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiUpload } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,7 @@ export default function ReportsPage() {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -87,7 +88,7 @@ export default function ReportsPage() {
     setNotice(null);
     setSaving(true);
     try {
-      await apiFetch<ReportRow>("/api/reports/", {
+      const rep = await apiFetch<ReportRow>("/api/reports/", {
         method: "POST",
         body: JSON.stringify({
           customer: Number(customerId),
@@ -103,6 +104,15 @@ export default function ReportsPage() {
           delivery_method: deliveryMethod || null
         })
       });
+
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("report", String(rep.id));
+        await apiUpload("/api/files/upload/", fd);
+        setFile(null);
+      }
+
       setCustomerId("");
       setReferenceNo("");
       setSender("");
@@ -111,7 +121,7 @@ export default function ReportsPage() {
       setDescription("");
       setDeliveryMethod("");
       await load();
-      setNotice("Rapor eklendi.");
+      setNotice(`Rapor eklendi. Rapor No: ${rep.report_no}`);
     } catch {
       setNotice("Rapor eklenemedi.");
     } finally {
@@ -188,6 +198,8 @@ export default function ReportsPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
 
         <Button type="submit" disabled={!token || saving || !customerId || !year}>
           {saving ? "Kaydediliyor..." : "Rapor Ekle"}

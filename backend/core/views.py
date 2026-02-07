@@ -176,11 +176,16 @@ class FileViewSet(AuditViewSet):
         scheme = "https" if secure else "http"
         url = f"{scheme}://{endpoint}/{bucket}/{key}"
 
+        document_id = request.data.get("document")
+        report_id = request.data.get("report")
+
         file_obj = File.objects.create(
             filename=upload.name,
             content_type=upload.content_type or "application/octet-stream",
             size=upload.size,
             url=url,
+            document_id=document_id or None,
+            report_id=report_id or None,
             created_by=_actor(request),
             updated_by=_actor(request),
         )
