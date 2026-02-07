@@ -12,7 +12,6 @@ type DocumentRow = {
   doc_type: string;
   year: number;
   customer: number;
-  direction?: string;
   sender?: string;
   recipient?: string;
   subject?: string;
@@ -28,11 +27,6 @@ type Customer = {
 };
 
 const DOC_TYPES = ["GLE", "GDE", "KIT", "DGR"];
-const DIRECTIONS = [
-  { value: "GELEN", label: "Gelen" },
-  { value: "GIDEN", label: "Giden" },
-  { value: "DAHILI", label: "Dahili" }
-];
 const DELIVERY = [
   { value: "KARGO", label: "Kargo" },
   { value: "EPOSTA", label: "E-posta" },
@@ -49,7 +43,6 @@ export default function DocumentsPage() {
   const [customerId, setCustomerId] = useState("");
   const [docType, setDocType] = useState("GLE");
   const [year, setYear] = useState("2026");
-  const [direction, setDirection] = useState("GELEN");
   const [receivedDate, setReceivedDate] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
   const [sender, setSender] = useState("");
@@ -96,7 +89,6 @@ export default function DocumentsPage() {
           customer: Number(customerId),
           doc_type: docType,
           year: Number(year),
-          direction,
           received_date: receivedDate || null,
           reference_no: referenceNo || null,
           sender: sender || null,
@@ -165,17 +157,6 @@ export default function DocumentsPage() {
         </select>
         <Input placeholder="Yıl" value={year} onChange={(e) => setYear(e.target.value)} />
 
-        <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-          value={direction}
-          onChange={(e) => setDirection(e.target.value)}
-        >
-          {DIRECTIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
-        </select>
         <Input type="date" placeholder="Tarih" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
         <Input placeholder="Harici sayı" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
 
@@ -221,8 +202,8 @@ export default function DocumentsPage() {
           <table className="w-full text-sm">
             <thead className="bg-haze text-left">
               <tr>
+                <th className="px-4 py-3 font-medium">Tarih</th>
                 <th className="px-4 py-3 font-medium">Evrak No</th>
-                <th className="px-4 py-3 font-medium">Yön</th>
                 <th className="px-4 py-3 font-medium">Tür</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
                 <th className="px-4 py-3 font-medium">Gönderen</th>
@@ -232,8 +213,8 @@ export default function DocumentsPage() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-t border-ink/10">
+                  <td className="px-4 py-3">{item.received_date}</td>
                   <td className="px-4 py-3">{item.doc_no}</td>
-                  <td className="px-4 py-3">{item.direction}</td>
                   <td className="px-4 py-3">{item.doc_type}</td>
                   <td className="px-4 py-3">{item.subject}</td>
                   <td className="px-4 py-3">{item.sender}</td>
