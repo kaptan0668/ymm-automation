@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -62,16 +62,16 @@ export default function CustomerCardPage() {
   }, [id]);
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!customer) return <div>Yükleniyor...</div>;
+  if (!customer) return <div>Yukleniyor...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">Müþteri Kartý</h1>
-          <p className="text-ink/60">{customer.name} • {customer.tax_no}</p>
+          <h1 className="text-3xl font-semibold">Musteri Karti</h1>
+          <p className="text-ink/60">{customer.name} â€¢ {customer.tax_no}</p>
         </div>
-        <Button onClick={() => window.print()}>Yazdýr</Button>
+        <Button onClick={() => window.print()}>Yazdir</Button>
       </div>
 
       <div>
@@ -79,7 +79,7 @@ export default function CustomerCardPage() {
         <ul className="list-disc pl-5 text-sm">
           {docs.map((d) => (
             <li key={d.id}>
-              {d.received_date} • {d.doc_no} • {d.subject}
+              {d.received_date} â€¢ {d.doc_no} â€¢ {d.subject}
             </li>
           ))}
         </ul>
@@ -90,7 +90,7 @@ export default function CustomerCardPage() {
         <ul className="list-disc pl-5 text-sm">
           {reports.map((r) => (
             <li key={r.id}>
-              {r.received_date} • {r.report_no} • {r.subject}
+              {r.received_date} â€¢ {r.report_no} â€¢ {r.subject}
             </li>
           ))}
         </ul>
