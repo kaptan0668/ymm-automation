@@ -292,6 +292,7 @@ class ContractViewSet(AuditViewSet):
             "email",
             "contact_person",
             "contract_no",
+            "contract_date",
             "contract_type",
             "period_start_month",
             "period_start_year",

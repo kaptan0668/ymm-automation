@@ -54,7 +54,7 @@ export default function ContractDetailPage() {
   }, [id]);
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!contract || !customer) return <div>Yükleniyor...</div>;
+  if (!contract || !customer) return <div>Yukleniyor...</div>;
 
   const period =
     contract.period_start_month &&
@@ -71,15 +71,15 @@ export default function ContractDetailPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-widest text-ink/50">Sözleşme Kartı</div>
-            <h1 className="text-3xl font-semibold">{contract.contract_no || "Sözleşme"}</h1>
+            <div className="text-xs uppercase tracking-widest text-ink/50">Sozlesme Karti</div>
+            <h1 className="text-3xl font-semibold">{contract.contract_no || "Sozlesme"}</h1>
             <div className="mt-1 text-sm text-ink/60">{customer.name}</div>
           </div>
           <div className="flex items-center gap-2">
             <Link className="text-sm text-terracotta print-hide" href={`/customers/${customer.id}`}>
-              Müşteri Kartı
+              Musteri Karti
             </Link>
-            <Button className="print-hide" onClick={() => window.print()}>Yazdır</Button>
+            <Button className="print-hide" onClick={() => window.print()}>Yazdir</Button>
           </div>
         </div>
       </div>
@@ -87,10 +87,10 @@ export default function ContractDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
           <div className="grid gap-3">
-            <div><b>Sözleşme Tarihi:</b> {contract.contract_date || "-"}</div>
-            <div><b>Sözleşme No:</b> {contract.contract_no || "-"}</div>
-            <div><b>Sözleşme Türü:</b> {contract.contract_type || "-"}</div>
-            <div><b>Dönemi:</b> {period}</div>
+            <div><b>Sozlesme Tarihi:</b> {contract.contract_date || "-"}</div>
+            <div><b>Sozlesme No:</b> {contract.contract_no || "-"}</div>
+            <div><b>Sozlesme Turu:</b> {contract.contract_type || "-"}</div>
+            <div><b>Donemi:</b> {period}</div>
           </div>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
@@ -110,14 +110,13 @@ export default function ContractDetailPage() {
         <div className="mt-4">
           {contract.file_url ? (
             <a className="text-terracotta" href={contract.file_url} target="_blank" rel="noreferrer">
-              {contract.filename || "Sözleşme dosyası"}
+              {contract.filename || "Sozlesme dosyasi"}
             </a>
           ) : (
-            <div className="text-sm text-ink/60">Dosya bulunamadı.</div>
+            <div className="text-sm text-ink/60">Dosya bulunamadi.</div>
           )}
         </div>
       </div>
     </div>
   );
 }
-

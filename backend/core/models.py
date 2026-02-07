@@ -25,7 +25,7 @@ DELIVERY_METHODS = [
     ("EPOSTA", "E-posta"),
     ("ELDEN", "Elden"),
     ("EBYS", "EBYS"),
-    ("DIGER", "DiÄŸer"),
+    ("DIGER", "DiÃ„Å¸er"),
 ]
 
 class AuditBase(models.Model):
@@ -35,7 +35,7 @@ class AuditBase(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        verbose_name="OluÅŸturan kullanÄ±cÄ±",
+        verbose_name="OluÃ…Å¸turan kullanÃ„Â±cÃ„Â±",
     )
     updated_by = models.ForeignKey(
         User,
@@ -43,86 +43,86 @@ class AuditBase(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        verbose_name="GÃ¼ncelleyen kullanÄ±cÄ±",
+        verbose_name="GÃƒÂ¼ncelleyen kullanÃ„Â±cÃ„Â±",
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="OluÅŸturulma zamanÄ±")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="GÃ¼ncellenme zamanÄ±")
-    is_archived = models.BooleanField(default=False, verbose_name="ArÅŸivlendi mi")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="OluÃ…Å¸turulma zamanÃ„Â±")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="GÃƒÂ¼ncellenme zamanÃ„Â±")
+    is_archived = models.BooleanField(default=False, verbose_name="ArÃ…Å¸ivlendi mi")
 
     class Meta:
         abstract = True
 
 class Customer(AuditBase):
-    name = models.CharField(max_length=255, verbose_name="MÃ¼ÅŸteri adÄ±")
-    tax_no = models.CharField(max_length=32, unique=True, verbose_name="Vergi numarasÄ±")
+    name = models.CharField(max_length=255, verbose_name="MÃƒÂ¼Ã…Å¸teri adÃ„Â±")
+    tax_no = models.CharField(max_length=32, unique=True, verbose_name="Vergi numarasÃ„Â±")
     tax_office = models.CharField(max_length=255, null=True, blank=True, verbose_name="Vergi dairesi")
     address = models.TextField(null=True, blank=True, verbose_name="Adres")
     phone = models.CharField(max_length=64, null=True, blank=True, verbose_name="Telefon")
     email = models.CharField(max_length=255, null=True, blank=True, verbose_name="E-posta")
-    contact_person = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili kiÅŸi")
+    contact_person = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili kiÃ…Å¸i")
 
     def __str__(self):
         return self.name
 
     class Meta:
-        verbose_name = "MÃ¼ÅŸteri"
-        verbose_name_plural = "MÃ¼ÅŸteriler"
+        verbose_name = "MÃƒÂ¼Ã…Å¸teri"
+        verbose_name_plural = "MÃƒÂ¼Ã…Å¸teriler"
 
 class DocumentCounter(models.Model):
-    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak tÃ¼rÃ¼")
-    year = models.IntegerField(verbose_name="YÄ±l")
+    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak tÃƒÂ¼rÃƒÂ¼")
+    year = models.IntegerField(verbose_name="YÃ„Â±l")
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
         unique_together = ("doc_type", "year")
-        verbose_name = "Evrak SayacÄ±"
-        verbose_name_plural = "Evrak SayaÃ§larÄ±"
+        verbose_name = "Evrak SayacÃ„Â±"
+        verbose_name_plural = "Evrak SayaÃƒÂ§larÃ„Â±"
 
 class ReportCounterYearAll(models.Model):
-    year = models.IntegerField(unique=True, verbose_name="YÄ±l")
+    year = models.IntegerField(unique=True, verbose_name="YÃ„Â±l")
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
-        verbose_name = "YÄ±l BazlÄ± Rapor SayacÄ±"
-        verbose_name_plural = "YÄ±l BazlÄ± Rapor SayaÃ§larÄ±"
+        verbose_name = "YÃ„Â±l BazlÃ„Â± Rapor SayacÃ„Â±"
+        verbose_name_plural = "YÃ„Â±l BazlÃ„Â± Rapor SayaÃƒÂ§larÃ„Â±"
 
 class ReportCounterGlobal(models.Model):
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
-        verbose_name = "Rapor Genel KÃ¼mÃ¼latif SayacÄ±"
-        verbose_name_plural = "Rapor Genel KÃ¼mÃ¼latif SayaÃ§larÄ±"
+        verbose_name = "Rapor Genel KÃƒÂ¼mÃƒÂ¼latif SayacÃ„Â±"
+        verbose_name_plural = "Rapor Genel KÃƒÂ¼mÃƒÂ¼latif SayaÃƒÂ§larÃ„Â±"
 
 class ReportCounterTypeCum(models.Model):
-    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor tÃ¼rÃ¼")
+    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor tÃƒÂ¼rÃƒÂ¼")
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
         unique_together = ("report_type",)
-        verbose_name = "Rapor TÃ¼rÃ¼ KÃ¼mÃ¼latif SayacÄ±"
-        verbose_name_plural = "Rapor TÃ¼rÃ¼ KÃ¼mÃ¼latif SayaÃ§larÄ±"
+        verbose_name = "Rapor TÃƒÂ¼rÃƒÂ¼ KÃƒÂ¼mÃƒÂ¼latif SayacÃ„Â±"
+        verbose_name_plural = "Rapor TÃƒÂ¼rÃƒÂ¼ KÃƒÂ¼mÃƒÂ¼latif SayaÃƒÂ§larÃ„Â±"
 
 class Document(AuditBase):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃ¼ÅŸteri")
-    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak tÃ¼rÃ¼")
-    year = models.IntegerField(verbose_name="YÄ±l")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃƒÂ¼Ã…Å¸teri")
+    doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak tÃƒÂ¼rÃƒÂ¼")
+    year = models.IntegerField(verbose_name="YÃ„Â±l")
     serial = models.IntegerField(verbose_name="Seri")
-    doc_no = models.CharField(max_length=64, unique=True, verbose_name="Evrak numarasÄ±")
+    doc_no = models.CharField(max_length=64, unique=True, verbose_name="Evrak numarasÃ„Â±")
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
-    reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayÄ±")
-    sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="GÃ¶nderen")
-    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="AlÄ±cÄ±")
+    reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayÃ„Â±")
+    sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="GÃƒÂ¶nderen")
+    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="AlÃ„Â±cÃ„Â±")
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
-    description = models.TextField(null=True, blank=True, verbose_name="AÃ§Ä±klama")
+    description = models.TextField(null=True, blank=True, verbose_name="AÃƒÂ§Ã„Â±klama")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
         null=True,
         blank=True,
-        verbose_name="Teslim yÃ¶ntemi",
+        verbose_name="Teslim yÃƒÂ¶ntemi",
     )
     delivery_kargo_name = models.CharField(
-        max_length=255, null=True, blank=True, verbose_name="Kargo adÄ±"
+        max_length=255, null=True, blank=True, verbose_name="Kargo adÃ„Â±"
     )
     delivery_kargo_tracking = models.CharField(
         max_length=255, null=True, blank=True, verbose_name="Kargo takip no"
@@ -143,7 +143,7 @@ class Document(AuditBase):
         null=True, blank=True, verbose_name="EBYS tarihi"
     )
     delivery_other_desc = models.TextField(
-        null=True, blank=True, verbose_name="DiÄŸer teslim aÃ§Ä±klamasÄ±"
+        null=True, blank=True, verbose_name="DiÃ„Å¸er teslim aÃƒÂ§Ã„Â±klamasÃ„Â±"
     )
 
     class Meta:
@@ -158,29 +158,29 @@ class Document(AuditBase):
         super().save(*args, **kwargs)
 
 class Report(AuditBase):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃ¼ÅŸteri")
-    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor tÃ¼rÃ¼")
-    year = models.IntegerField(verbose_name="YÄ±l")
-    type_cumulative = models.IntegerField(verbose_name="TÃ¼r bazlÄ± kÃ¼mÃ¼latif sayaÃ§")
-    year_serial_all = models.IntegerField(verbose_name="YÄ±l iÃ§i toplam sayaÃ§")
-    report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarasÄ±")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃƒÂ¼Ã…Å¸teri")
+    report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor tÃƒÂ¼rÃƒÂ¼")
+    year = models.IntegerField(verbose_name="YÃ„Â±l")
+    type_cumulative = models.IntegerField(verbose_name="TÃƒÂ¼r bazlÃ„Â± kÃƒÂ¼mÃƒÂ¼latif sayaÃƒÂ§")
+    year_serial_all = models.IntegerField(verbose_name="YÃ„Â±l iÃƒÂ§i toplam sayaÃƒÂ§")
+    report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarasÃ„Â±")
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
-    period_start_month = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem baÅŸlangÄ±Ã§ ay")
-    period_start_year = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem baÅŸlangÄ±Ã§ yÄ±l")
-    period_end_month = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem bitiÅŸ ay")
-    period_end_year = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem bitiÅŸ yÄ±l")
-    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="AlÄ±cÄ±")
+    period_start_month = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem baÃ…Å¸langÃ„Â±ÃƒÂ§ ay")
+    period_start_year = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem baÃ…Å¸langÃ„Â±ÃƒÂ§ yÃ„Â±l")
+    period_end_month = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem bitiÃ…Å¸ ay")
+    period_end_year = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem bitiÃ…Å¸ yÃ„Â±l")
+    recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="AlÃ„Â±cÃ„Â±")
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
-    description = models.TextField(null=True, blank=True, verbose_name="AÃ§Ä±klama")
+    description = models.TextField(null=True, blank=True, verbose_name="AÃƒÂ§Ã„Â±klama")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
         null=True,
         blank=True,
-        verbose_name="Teslim yÃ¶ntemi",
+        verbose_name="Teslim yÃƒÂ¶ntemi",
     )
     delivery_kargo_name = models.CharField(
-        max_length=255, null=True, blank=True, verbose_name="Kargo adÄ±"
+        max_length=255, null=True, blank=True, verbose_name="Kargo adÃ„Â±"
     )
     delivery_kargo_tracking = models.CharField(
         max_length=255, null=True, blank=True, verbose_name="Kargo takip no"
@@ -201,7 +201,7 @@ class Report(AuditBase):
         null=True, blank=True, verbose_name="EBYS tarihi"
     )
     delivery_other_desc = models.TextField(
-        null=True, blank=True, verbose_name="DiÄŸer teslim aÃ§Ä±klamasÄ±"
+        null=True, blank=True, verbose_name="DiÃ„Å¸er teslim aÃƒÂ§Ã„Â±klamasÃ„Â±"
     )
 
     class Meta:
@@ -221,8 +221,8 @@ class Report(AuditBase):
         super().save(*args, **kwargs)
 
 class File(AuditBase):
-    filename = models.CharField(max_length=255, verbose_name="Dosya adÄ±")
-    content_type = models.CharField(max_length=128, verbose_name="Ä°Ã§erik tÃ¼rÃ¼")
+    filename = models.CharField(max_length=255, verbose_name="Dosya adÃ„Â±")
+    content_type = models.CharField(max_length=128, verbose_name="Ã„Â°ÃƒÂ§erik tÃƒÂ¼rÃƒÂ¼")
     size = models.IntegerField(verbose_name="Boyut (byte)")
     url = models.URLField(verbose_name="URL")
     document = models.ForeignKey(
@@ -247,7 +247,7 @@ class File(AuditBase):
         blank=True,
         on_delete=models.CASCADE,
         related_name="files",
-        verbose_name="MÃ¼ÅŸteri",
+        verbose_name="MÃƒÂ¼Ã…Å¸teri",
     )
 
     class Meta:
@@ -256,47 +256,47 @@ class File(AuditBase):
 
 class AuditLog(models.Model):
     model = models.CharField(max_length=128, verbose_name="Model")
-    object_id = models.CharField(max_length=64, verbose_name="KayÄ±t ID")
-    action = models.CharField(max_length=32, verbose_name="Ä°ÅŸlem")
+    object_id = models.CharField(max_length=64, verbose_name="KayÃ„Â±t ID")
+    action = models.CharField(max_length=32, verbose_name="Ã„Â°Ã…Å¸lem")
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Zaman")
     actor = models.ForeignKey(
         User,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        verbose_name="KullanÄ±cÄ±",
+        verbose_name="KullanÃ„Â±cÃ„Â±",
     )
 
     class Meta:
-        verbose_name = "Denetim KaydÄ±"
-        verbose_name_plural = "Denetim KayÄ±tlarÄ±"
+        verbose_name = "Denetim KaydÃ„Â±"
+        verbose_name_plural = "Denetim KayÃ„Â±tlarÃ„Â±"
 
 class ContractJob(AuditBase):
     status = models.CharField(max_length=32, default="pending", verbose_name="Durum")
-    payload = models.JSONField(default=dict, verbose_name="Ä°Ã§erik")
+    payload = models.JSONField(default=dict, verbose_name="Ã„Â°ÃƒÂ§erik")
 
     class Meta:
-        verbose_name = "SÃ¶zleÅŸme Ä°ÅŸi"
-        verbose_name_plural = "SÃ¶zleÅŸme Ä°ÅŸleri"
+        verbose_name = "SÃƒÂ¶zleÃ…Å¸me Ã„Â°Ã…Å¸i"
+        verbose_name_plural = "SÃƒÂ¶zleÃ…Å¸me Ã„Â°Ã…Å¸leri"
 
 
 class Contract(AuditBase):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃ¼ÅŸteri")
-    contract_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="SÃ¶zleÅŸme no")
-    contract_date = models.DateField(null=True, blank=True, verbose_name="SÃ¶zleÅŸme tarihi")
-    contract_type = models.CharField(max_length=64, null=True, blank=True, verbose_name="SÃ¶zleÅŸme tÃ¼rÃ¼")
-    period_start_month = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem baÅŸlangÄ±Ã§ ay")
-    period_start_year = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem baÅŸlangÄ±Ã§ yÄ±l")
-    period_end_month = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem bitiÅŸ ay")
-    period_end_year = models.IntegerField(null=True, blank=True, verbose_name="DÃ¶nem bitiÅŸ yÄ±l")
-    filename = models.CharField(max_length=255, null=True, blank=True, verbose_name="Dosya adÄ±")
-    content_type = models.CharField(max_length=128, null=True, blank=True, verbose_name="Ä°Ã§erik tÃ¼rÃ¼")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="MÃƒÂ¼Ã…Å¸teri")
+    contract_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="SÃƒÂ¶zleÃ…Å¸me no")
+    contract_date = models.DateField(null=True, blank=True, verbose_name="SÃƒÂ¶zleÃ…Å¸me tarihi")
+    contract_type = models.CharField(max_length=64, null=True, blank=True, verbose_name="SÃƒÂ¶zleÃ…Å¸me tÃƒÂ¼rÃƒÂ¼")
+    period_start_month = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem baÃ…Å¸langÃ„Â±ÃƒÂ§ ay")
+    period_start_year = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem baÃ…Å¸langÃ„Â±ÃƒÂ§ yÃ„Â±l")
+    period_end_month = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem bitiÃ…Å¸ ay")
+    period_end_year = models.IntegerField(null=True, blank=True, verbose_name="DÃƒÂ¶nem bitiÃ…Å¸ yÃ„Â±l")
+    filename = models.CharField(max_length=255, null=True, blank=True, verbose_name="Dosya adÃ„Â±")
+    content_type = models.CharField(max_length=128, null=True, blank=True, verbose_name="Ã„Â°ÃƒÂ§erik tÃƒÂ¼rÃƒÂ¼")
     size = models.IntegerField(null=True, blank=True, verbose_name="Boyut (byte)")
     file_url = models.URLField(null=True, blank=True, verbose_name="Dosya URL")
 
     class Meta:
-        verbose_name = "SÃ¶zleÅŸme"
-        verbose_name_plural = "SÃ¶zleÅŸmeler"
+        verbose_name = "SÃƒÂ¶zleÃ…Å¸me"
+        verbose_name_plural = "SÃƒÂ¶zleÃ…Å¸meler"
 
 
 def next_document_number(doc_type: str, year: int) -> tuple[str, int]:
