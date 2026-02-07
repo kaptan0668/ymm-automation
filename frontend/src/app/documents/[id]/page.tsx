@@ -18,6 +18,14 @@ type DocumentRow = {
   subject?: string;
   description?: string;
   delivery_method?: string;
+  delivery_kargo_name?: string;
+  delivery_kargo_tracking?: string;
+  delivery_elden_name?: string;
+  delivery_elden_date?: string;
+  delivery_email?: string;
+  delivery_ebys_id?: string;
+  delivery_ebys_date?: string;
+  delivery_other_desc?: string;
   customer: number;
 };
 
@@ -79,6 +87,30 @@ export default function DocumentDetailPage() {
             <div><b>Tur:</b> {doc.doc_type}</div>
             <div><b>Harici Sayi:</b> {doc.reference_no || "-"}</div>
             <div><b>Teslim:</b> {doc.delivery_method || "-"}</div>
+            {doc.delivery_method === "KARGO" ? (
+              <>
+                <div><b>Kargo:</b> {doc.delivery_kargo_name || "-"}</div>
+                <div><b>Takip No:</b> {doc.delivery_kargo_tracking || "-"}</div>
+              </>
+            ) : null}
+            {doc.delivery_method === "ELDEN" ? (
+              <>
+                <div><b>Teslim Alan:</b> {doc.delivery_elden_name || "-"}</div>
+                <div><b>Teslim Tarihi:</b> {doc.delivery_elden_date || "-"}</div>
+              </>
+            ) : null}
+            {doc.delivery_method === "EPOSTA" ? (
+              <div><b>E-posta:</b> {doc.delivery_email || "-"}</div>
+            ) : null}
+            {doc.delivery_method === "EBYS" ? (
+              <>
+                <div><b>EBYS ID:</b> {doc.delivery_ebys_id || "-"}</div>
+                <div><b>EBYS Tarihi:</b> {doc.delivery_ebys_date || "-"}</div>
+              </>
+            ) : null}
+            {doc.delivery_method === "DIGER" ? (
+              <div><b>Diger:</b> {doc.delivery_other_desc || "-"}</div>
+            ) : null}
           </div>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">

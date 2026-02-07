@@ -1,4 +1,4 @@
-﻿from django.db import models, transaction
+from django.db import models, transaction
 import os
 from django.contrib.auth import get_user_model
 
@@ -116,6 +116,30 @@ class Document(AuditBase):
         blank=True,
         verbose_name="Teslim yöntemi",
     )
+    delivery_kargo_name = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Kargo adı"
+    )
+    delivery_kargo_tracking = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Kargo takip no"
+    )
+    delivery_elden_name = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Elden teslim alan"
+    )
+    delivery_elden_date = models.DateField(
+        null=True, blank=True, verbose_name="Elden teslim tarihi"
+    )
+    delivery_email = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="E-posta adresi"
+    )
+    delivery_ebys_id = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="EBYS ID"
+    )
+    delivery_ebys_date = models.DateField(
+        null=True, blank=True, verbose_name="EBYS tarihi"
+    )
+    delivery_other_desc = models.TextField(
+        null=True, blank=True, verbose_name="Diğer teslim açıklaması"
+    )
 
     class Meta:
         verbose_name = "Evrak"
@@ -136,8 +160,10 @@ class Report(AuditBase):
     year_serial_all = models.IntegerField(verbose_name="Yıl içi toplam sayaç")
     report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarası")
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
-    reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayı")
-    sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen")
+    period_start_month = models.IntegerField(null=True, blank=True, verbose_name="Dönem başlangıç ay")
+    period_start_year = models.IntegerField(null=True, blank=True, verbose_name="Dönem başlangıç yıl")
+    period_end_month = models.IntegerField(null=True, blank=True, verbose_name="Dönem bitiş ay")
+    period_end_year = models.IntegerField(null=True, blank=True, verbose_name="Dönem bitiş yıl")
     recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="Alıcı")
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
@@ -147,6 +173,30 @@ class Report(AuditBase):
         null=True,
         blank=True,
         verbose_name="Teslim yöntemi",
+    )
+    delivery_kargo_name = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Kargo adı"
+    )
+    delivery_kargo_tracking = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Kargo takip no"
+    )
+    delivery_elden_name = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Elden teslim alan"
+    )
+    delivery_elden_date = models.DateField(
+        null=True, blank=True, verbose_name="Elden teslim tarihi"
+    )
+    delivery_email = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="E-posta adresi"
+    )
+    delivery_ebys_id = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="EBYS ID"
+    )
+    delivery_ebys_date = models.DateField(
+        null=True, blank=True, verbose_name="EBYS tarihi"
+    )
+    delivery_other_desc = models.TextField(
+        null=True, blank=True, verbose_name="Diğer teslim açıklaması"
     )
 
     class Meta:

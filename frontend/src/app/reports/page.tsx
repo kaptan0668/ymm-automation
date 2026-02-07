@@ -14,11 +14,21 @@ type ReportRow = {
   year: number;
   customer: number;
   received_date?: string;
-  sender?: string;
   recipient?: string;
   subject?: string;
-  reference_no?: string;
+  period_start_month?: number;
+  period_start_year?: number;
+  period_end_month?: number;
+  period_end_year?: number;
   delivery_method?: string;
+  delivery_kargo_name?: string;
+  delivery_kargo_tracking?: string;
+  delivery_elden_name?: string;
+  delivery_elden_date?: string;
+  delivery_email?: string;
+  delivery_ebys_id?: string;
+  delivery_ebys_date?: string;
+  delivery_other_desc?: string;
 };
 
 type Customer = {
@@ -28,6 +38,7 @@ type Customer = {
 };
 
 const REPORT_TYPES = ["TT", "KDV", "OAR", "DGR"];
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
 const DELIVERY = [
   { value: "KARGO", label: "Kargo" },
   { value: "EPOSTA", label: "E-posta" },
@@ -45,12 +56,22 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("TT");
   const [year, setYear] = useState("2026");
   const [receivedDate, setReceivedDate] = useState("");
-  const [referenceNo, setReferenceNo] = useState("");
-  const [sender, setSender] = useState("");
+  const [periodStartMonth, setPeriodStartMonth] = useState("");
+  const [periodStartYear, setPeriodStartYear] = useState("2026");
+  const [periodEndMonth, setPeriodEndMonth] = useState("");
+  const [periodEndYear, setPeriodEndYear] = useState("2026");
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [deliveryKargoName, setDeliveryKargoName] = useState("");
+  const [deliveryKargoTracking, setDeliveryKargoTracking] = useState("");
+  const [deliveryEldenName, setDeliveryEldenName] = useState("");
+  const [deliveryEldenDate, setDeliveryEldenDate] = useState("");
+  const [deliveryEmail, setDeliveryEmail] = useState("");
+  const [deliveryEbysId, setDeliveryEbysId] = useState("");
+  const [deliveryEbysDate, setDeliveryEbysDate] = useState("");
+  const [deliveryOtherDesc, setDeliveryOtherDesc] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,6 +79,7 @@ export default function ReportsPage() {
 
   const [filterText, setFilterText] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterType, setFilterType] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
 
   async function load() {
@@ -86,6 +108,15 @@ export default function ReportsPage() {
 
   const token = getAccessToken();
 
+  const years = useMemo(() => {
+    const now = new Date().getFullYear();
+    const ys: string[] = [];
+    for (let y = 2010; y <= now; y += 1) {
+      ys.push(String(y));
+    }
+    return ys;
+  }, []);
+
   const customerMap = useMemo(() => {
     const m = new Map<number, Customer>();
     customers.forEach((c) => m.set(c.id, c));
@@ -97,10 +128,13 @@ export default function ReportsPage() {
     if (filterCustomer) {
       rows = rows.filter((r) => String(r.customer) === filterCustomer);
     }
+    if (filterType) {
+      rows = rows.filter((r) => r.report_type === filterType);
+    }
     if (filterText) {
       const t = filterText.toLowerCase();
       rows = rows.filter((r) =>
-        [r.report_no, r.subject, r.sender, r.recipient].filter(Boolean).join(" ").toLowerCase().includes(t)
+        [r.report_no, r.subject, r.recipient].filter(Boolean).join(" ").toLowerCase().includes(t)
       );
     }
     if (sortBy === "date_asc") {
@@ -111,7 +145,7 @@ export default function ReportsPage() {
       rows = [...rows].sort((a, b) => (customerMap.get(a.customer)?.name || "").localeCompare(customerMap.get(b.customer)?.name || ""));
     }
     return rows;
-  }, [items, filterCustomer, filterText, sortBy, customerMap]);
+  }, [items, filterCustomer, filterType, filterText, sortBy, customerMap]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -125,12 +159,22 @@ export default function ReportsPage() {
           report_type: reportType,
           year: Number(year),
           received_date: receivedDate || null,
-          reference_no: referenceNo || null,
-          sender: sender || null,
           recipient: recipient || null,
           subject: subject || null,
           description: description || null,
-          delivery_method: deliveryMethod || null
+          delivery_method: deliveryMethod || null,
+          period_start_month: periodStartMonth ? Number(periodStartMonth) : null,
+          period_start_year: periodStartYear ? Number(periodStartYear) : null,
+          period_end_month: periodEndMonth ? Number(periodEndMonth) : null,
+          period_end_year: periodEndYear ? Number(periodEndYear) : null,
+          delivery_kargo_name: deliveryKargoName || null,
+          delivery_kargo_tracking: deliveryKargoTracking || null,
+          delivery_elden_name: deliveryEldenName || null,
+          delivery_elden_date: deliveryEldenDate || null,
+          delivery_email: deliveryEmail || null,
+          delivery_ebys_id: deliveryEbysId || null,
+          delivery_ebys_date: deliveryEbysDate || null,
+          delivery_other_desc: deliveryOtherDesc || null
         })
       });
 
@@ -143,12 +187,22 @@ export default function ReportsPage() {
       }
 
       setCustomerId("");
-      setReferenceNo("");
-      setSender("");
+      setPeriodStartMonth("");
+      setPeriodStartYear("2026");
+      setPeriodEndMonth("");
+      setPeriodEndYear("2026");
       setRecipient("");
       setSubject("");
       setDescription("");
       setDeliveryMethod("");
+      setDeliveryKargoName("");
+      setDeliveryKargoTracking("");
+      setDeliveryEldenName("");
+      setDeliveryEldenDate("");
+      setDeliveryEmail("");
+      setDeliveryEbysId("");
+      setDeliveryEbysDate("");
+      setDeliveryOtherDesc("");
       await load();
       setNotice(`Rapor eklendi. Rapor No: ${rep.report_no}`);
     } catch (err) {
@@ -201,11 +255,70 @@ export default function ReportsPage() {
             </option>
           ))}
         </select>
-        <Input placeholder="Yil" value={year} onChange={(e) => setYear(e.target.value)} />
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
 
         <Input type="date" placeholder="Tarih" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
-        <Input placeholder="Harici sayi" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-        <Input placeholder="Gonderen" value={sender} onChange={(e) => setSender(e.target.value)} />
+
+        <div className="flex gap-2">
+          <select
+            className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={periodStartMonth}
+            onChange={(e) => setPeriodStartMonth(e.target.value)}
+          >
+            <option value="">Baslangic ay</option>
+            {MONTHS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={periodStartYear}
+            onChange={(e) => setPeriodStartYear(e.target.value)}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <select
+            className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={periodEndMonth}
+            onChange={(e) => setPeriodEndMonth(e.target.value)}
+          >
+            <option value="">Bitis ay</option>
+            {MONTHS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={periodEndYear}
+            onChange={(e) => setPeriodEndYear(e.target.value)}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
         <Input placeholder="Alici" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
         <Input placeholder="Konu" value={subject} onChange={(e) => setSubject(e.target.value)} />
         <select
@@ -220,22 +333,64 @@ export default function ReportsPage() {
             </option>
           ))}
         </select>
+        {deliveryMethod === "KARGO" ? (
+          <>
+            <Input placeholder="Kargo adi" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
+            <Input placeholder="Takip no" value={deliveryKargoTracking} onChange={(e) => setDeliveryKargoTracking(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "ELDEN" ? (
+          <>
+            <Input placeholder="Teslim alan (Ad Soyad)" value={deliveryEldenName} onChange={(e) => setDeliveryEldenName(e.target.value)} />
+            <Input type="date" placeholder="Teslim tarihi" value={deliveryEldenDate} onChange={(e) => setDeliveryEldenDate(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "EPOSTA" ? (
+          <Input placeholder="E-posta adresi" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} />
+        ) : null}
+        {deliveryMethod === "EBYS" ? (
+          <>
+            <Input placeholder="EBYS ID" value={deliveryEbysId} onChange={(e) => setDeliveryEbysId(e.target.value)} />
+            <Input type="date" placeholder="EBYS tarihi" value={deliveryEbysDate} onChange={(e) => setDeliveryEbysDate(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "DIGER" ? (
+          <textarea
+            className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
+            placeholder="Aciklama"
+            value={deliveryOtherDesc}
+            onChange={(e) => setDeliveryOtherDesc(e.target.value)}
+          />
+        ) : null}
         <textarea
           className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
-          placeholder="Aciklama"
+          placeholder="Aciklama (genel)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
 
         <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
 
-        <Button type="submit" disabled={!token || saving || !customerId || !year || !receivedDate}>
+        <Button
+          type="submit"
+          disabled={
+            !token ||
+            saving ||
+            !customerId ||
+            !year ||
+            !receivedDate ||
+            !periodStartMonth ||
+            !periodStartYear ||
+            !periodEndMonth ||
+            !periodEndYear
+          }
+        >
           {saving ? "Kaydediliyor..." : "Rapor Ekle"}
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
         <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -246,6 +401,18 @@ export default function ReportsPage() {
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="">Rapor turu (tum)</option>
+          {REPORT_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
             </option>
           ))}
         </select>

@@ -19,6 +19,14 @@ type DocumentRow = {
   subject?: string;
   reference_no?: string;
   delivery_method?: string;
+  delivery_kargo_name?: string;
+  delivery_kargo_tracking?: string;
+  delivery_elden_name?: string;
+  delivery_elden_date?: string;
+  delivery_email?: string;
+  delivery_ebys_id?: string;
+  delivery_ebys_date?: string;
+  delivery_other_desc?: string;
 };
 
 type Customer = {
@@ -51,6 +59,14 @@ export default function DocumentsPage() {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [deliveryKargoName, setDeliveryKargoName] = useState("");
+  const [deliveryKargoTracking, setDeliveryKargoTracking] = useState("");
+  const [deliveryEldenName, setDeliveryEldenName] = useState("");
+  const [deliveryEldenDate, setDeliveryEldenDate] = useState("");
+  const [deliveryEmail, setDeliveryEmail] = useState("");
+  const [deliveryEbysId, setDeliveryEbysId] = useState("");
+  const [deliveryEbysDate, setDeliveryEbysDate] = useState("");
+  const [deliveryOtherDesc, setDeliveryOtherDesc] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,6 +74,7 @@ export default function DocumentsPage() {
 
   const [filterText, setFilterText] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterType, setFilterType] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
 
   async function load() {
@@ -97,6 +114,9 @@ export default function DocumentsPage() {
     if (filterCustomer) {
       rows = rows.filter((r) => String(r.customer) === filterCustomer);
     }
+    if (filterType) {
+      rows = rows.filter((r) => r.doc_type === filterType);
+    }
     if (filterText) {
       const t = filterText.toLowerCase();
       rows = rows.filter((r) =>
@@ -111,7 +131,7 @@ export default function DocumentsPage() {
       rows = [...rows].sort((a, b) => (customerMap.get(a.customer)?.name || "").localeCompare(customerMap.get(b.customer)?.name || ""));
     }
     return rows;
-  }, [items, filterCustomer, filterText, sortBy, customerMap]);
+  }, [items, filterCustomer, filterType, filterText, sortBy, customerMap]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -130,7 +150,15 @@ export default function DocumentsPage() {
           recipient: recipient || null,
           subject: subject || null,
           description: description || null,
-          delivery_method: deliveryMethod || null
+          delivery_method: deliveryMethod || null,
+          delivery_kargo_name: deliveryKargoName || null,
+          delivery_kargo_tracking: deliveryKargoTracking || null,
+          delivery_elden_name: deliveryEldenName || null,
+          delivery_elden_date: deliveryEldenDate || null,
+          delivery_email: deliveryEmail || null,
+          delivery_ebys_id: deliveryEbysId || null,
+          delivery_ebys_date: deliveryEbysDate || null,
+          delivery_other_desc: deliveryOtherDesc || null
         })
       });
 
@@ -149,6 +177,14 @@ export default function DocumentsPage() {
       setSubject("");
       setDescription("");
       setDeliveryMethod("");
+      setDeliveryKargoName("");
+      setDeliveryKargoTracking("");
+      setDeliveryEldenName("");
+      setDeliveryEldenDate("");
+      setDeliveryEmail("");
+      setDeliveryEbysId("");
+      setDeliveryEbysDate("");
+      setDeliveryOtherDesc("");
       await load();
       setNotice(`Evrak eklendi. Evrak No: ${doc.doc_no}`);
     } catch (err) {
@@ -220,9 +256,38 @@ export default function DocumentsPage() {
             </option>
           ))}
         </select>
+        {deliveryMethod === "KARGO" ? (
+          <>
+            <Input placeholder="Kargo adi" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
+            <Input placeholder="Takip no" value={deliveryKargoTracking} onChange={(e) => setDeliveryKargoTracking(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "ELDEN" ? (
+          <>
+            <Input placeholder="Teslim alan (Ad Soyad)" value={deliveryEldenName} onChange={(e) => setDeliveryEldenName(e.target.value)} />
+            <Input type="date" placeholder="Teslim tarihi" value={deliveryEldenDate} onChange={(e) => setDeliveryEldenDate(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "EPOSTA" ? (
+          <Input placeholder="E-posta adresi" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} />
+        ) : null}
+        {deliveryMethod === "EBYS" ? (
+          <>
+            <Input placeholder="EBYS ID" value={deliveryEbysId} onChange={(e) => setDeliveryEbysId(e.target.value)} />
+            <Input type="date" placeholder="EBYS tarihi" value={deliveryEbysDate} onChange={(e) => setDeliveryEbysDate(e.target.value)} />
+          </>
+        ) : null}
+        {deliveryMethod === "DIGER" ? (
+          <textarea
+            className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
+            placeholder="Aciklama"
+            value={deliveryOtherDesc}
+            onChange={(e) => setDeliveryOtherDesc(e.target.value)}
+          />
+        ) : null}
         <textarea
           className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
-          placeholder="Aciklama"
+          placeholder="Aciklama (genel)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -235,7 +300,7 @@ export default function DocumentsPage() {
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
         <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -246,6 +311,18 @@ export default function DocumentsPage() {
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="">Evrak turu (tum)</option>
+          {DOC_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
             </option>
           ))}
         </select>
