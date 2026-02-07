@@ -438,7 +438,8 @@ export default function ReportsPage() {
                 <th className="px-4 py-3 font-medium">Tarih</th>
                 <th className="px-4 py-3 font-medium">Rapor No</th>
                 <th className="px-4 py-3 font-medium">Musteri</th>
-                <th className="px-4 py-3 font-medium">Konu</th>
+                <th className="px-4 py-3 font-medium">Tur</th>
+                <th className="px-4 py-3 font-medium">Donem</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
                 <th className="px-4 py-3 font-medium">Duzenle</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
@@ -447,10 +448,20 @@ export default function ReportsPage() {
             <tbody>
               {filtered.map((item) => (
                 <tr key={item.id} className="border-t border-ink/10">
+                  {(() => {
+                    const period =
+                      item.period_start_month && item.period_start_year && item.period_end_month && item.period_end_year
+                        ? `${String(item.period_start_month).padStart(2, "0")}/${item.period_start_year}-${String(
+                            item.period_end_month
+                          ).padStart(2, "0")}/${item.period_end_year}`
+                        : "-";
+                    return (
+                      <>
                   <td className="px-4 py-3">{item.received_date}</td>
                   <td className="px-4 py-3">{item.report_no}</td>
                   <td className="px-4 py-3">{customerMap.get(item.customer)?.name}</td>
-                  <td className="px-4 py-3">{item.subject}</td>
+                  <td className="px-4 py-3">{item.report_type}</td>
+                  <td className="px-4 py-3">{period}</td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/reports/${item.id}`}>
                       Ac
@@ -466,6 +477,9 @@ export default function ReportsPage() {
                       <button className="text-red-600" onClick={() => handleDelete(item.id)}>Sil</button>
                     </td>
                   ) : null}
+                      </>
+                    );
+                  })()}
                 </tr>
               ))}
             </tbody>
