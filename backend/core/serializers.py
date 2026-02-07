@@ -21,6 +21,16 @@ class DocumentSerializer(serializers.ModelSerializer):
             "is_archived",
         )
 
+    def validate_received_date(self, value):
+        from django.utils import timezone
+
+        if value is None:
+            raise serializers.ValidationError("Tarih zorunludur.")
+        today = timezone.localdate()
+        if value < today:
+            raise serializers.ValidationError("Geçmiş tarihli evrak girilemez.")
+        return value
+
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
@@ -35,6 +45,16 @@ class ReportSerializer(serializers.ModelSerializer):
             "updated_at",
             "is_archived",
         )
+
+    def validate_received_date(self, value):
+        from django.utils import timezone
+
+        if value is None:
+            raise serializers.ValidationError("Tarih zorunludur.")
+        today = timezone.localdate()
+        if value < today:
+            raise serializers.ValidationError("Geçmiş tarihli rapor girilemez.")
+        return value
 
 class FileSerializer(serializers.ModelSerializer):
     class Meta:

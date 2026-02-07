@@ -6,6 +6,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.exceptions import PermissionDenied
 from .models import (
     Customer,
     Document,
@@ -88,6 +89,8 @@ class AuditViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         actor = _actor(self.request)
+        if actor and not actor.is_staff:
+            raise PermissionDenied("Silme sadece admin için izinlidir.")
         if hasattr(instance, "is_archived"):
             instance.is_archived = True
             if hasattr(instance, "updated_by"):

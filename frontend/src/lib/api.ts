@@ -61,3 +61,9 @@ export async function login(username: string, password: string) {
     body: JSON.stringify({ username, password })
   });
 }
+
+export async function me() {
+  return apiFetch<{ authenticated: boolean; username?: string; is_staff?: boolean }>(
+    "/api/auth/me/"
+  );
+}

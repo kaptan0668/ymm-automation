@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch, apiUpload } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch, apiUpload, me } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,11 @@ type ReportRow = {
   report_type: string;
   year: number;
   customer: number;
+  received_date?: string;
   sender?: string;
   recipient?: string;
   subject?: string;
   reference_no?: string;
-  received_date?: string;
   delivery_method?: string;
 };
 
@@ -33,7 +33,7 @@ const DELIVERY = [
   { value: "EPOSTA", label: "E-posta" },
   { value: "ELDEN", label: "Elden" },
   { value: "EBYS", label: "EBYS" },
-  { value: "DIGER", label: "Diğer" }
+  { value: "DIGER", label: "Di�er" }
 ];
 
 export default function ReportsPage() {
@@ -54,16 +54,23 @@ export default function ReportsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isStaff, setIsStaff] = useState(false);
+
+  const [filterText, setFilterText] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const [sortBy, setSortBy] = useState("date_desc");
 
   async function load() {
     setLoading(true);
     try {
-      const [reports, custs] = await Promise.all([
+      const [reps, custs, meInfo] = await Promise.all([
         apiFetch<ReportRow[]>("/api/reports/"),
-        apiFetch<Customer[]>("/api/customers/")
+        apiFetch<Customer[]>("/api/customers/"),
+        me()
       ]);
-      setItems(reports);
+      setItems(reps);
       setCustomers(custs);
+      setIsStaff(Boolean(meInfo?.is_staff));
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -78,6 +85,33 @@ export default function ReportsPage() {
   }, []);
 
   const token = getAccessToken();
+
+  const customerMap = useMemo(() => {
+    const m = new Map<number, Customer>();
+    customers.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [customers]);
+
+  const filtered = useMemo(() => {
+    let rows = items;
+    if (filterCustomer) {
+      rows = rows.filter((r) => String(r.customer) === filterCustomer);
+    }
+    if (filterText) {
+      const t = filterText.toLowerCase();
+      rows = rows.filter((r) =>
+        [r.report_no, r.subject, r.sender, r.recipient].filter(Boolean).join(" ").toLowerCase().includes(t)
+      );
+    }
+    if (sortBy === "date_asc") {
+      rows = [...rows].sort((a, b) => (a.received_date || "").localeCompare(b.received_date || ""));
+    } else if (sortBy === "date_desc") {
+      rows = [...rows].sort((a, b) => (b.received_date || "").localeCompare(a.received_date || ""));
+    } else if (sortBy === "customer_asc") {
+      rows = [...rows].sort((a, b) => (customerMap.get(a.customer)?.name || "").localeCompare(customerMap.get(b.customer)?.name || ""));
+    }
+    return rows;
+  }, [items, filterCustomer, filterText, sortBy, customerMap]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -125,11 +159,22 @@ export default function ReportsPage() {
     }
   }
 
+  async function handleDelete(id: number) {
+    if (!confirm("Rapor silinsin mi?")) return;
+    try {
+      await apiFetch(`/api/reports/${id}/`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      alert(`Silinemedi: ${msg}`);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Raporlar</h1>
-        <p className="text-ink/60">Rapor üretim ve durum izleme.</p>
+        <p className="text-ink/60">Rapor uretim ve durum izleme.</p>
       </div>
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
@@ -138,7 +183,7 @@ export default function ReportsPage() {
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
-          <option value="">Müşteri seç</option>
+          <option value="">Musteri sec</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
@@ -156,21 +201,19 @@ export default function ReportsPage() {
             </option>
           ))}
         </select>
-        <Input placeholder="Yıl" value={year} onChange={(e) => setYear(e.target.value)} />
+        <Input placeholder="Yil" value={year} onChange={(e) => setYear(e.target.value)} />
 
         <Input type="date" placeholder="Tarih" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
-        <Input placeholder="Harici sayı" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-
-        <Input placeholder="Gönderen" value={sender} onChange={(e) => setSender(e.target.value)} />
-        <Input placeholder="Alıcı" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+        <Input placeholder="Harici sayi" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
+        <Input placeholder="Gonderen" value={sender} onChange={(e) => setSender(e.target.value)} />
+        <Input placeholder="Alici" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
         <Input placeholder="Konu" value={subject} onChange={(e) => setSubject(e.target.value)} />
-
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
           value={deliveryMethod}
           onChange={(e) => setDeliveryMethod(e.target.value)}
         >
-          <option value="">Teslim yöntemi</option>
+          <option value="">Teslim yontemi</option>
           {DELIVERY.map((d) => (
             <option key={d.value} value={d.value}>
               {d.label}
@@ -179,23 +222,45 @@ export default function ReportsPage() {
         </select>
         <textarea
           className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
-          placeholder="Açıklama"
+          placeholder="Aciklama"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
 
         <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
 
-        <Button type="submit" disabled={!token || saving || !customerId || !year}>
+        <Button type="submit" disabled={!token || saving || !customerId || !year || !receivedDate}>
           {saving ? "Kaydediliyor..." : "Rapor Ekle"}
-        </Button>
-        <Button type="button" variant="outline" onClick={load}>
-          Yenile
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      {loading ? <div>Yükleniyor...</div> : null}
+      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
+        <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={filterCustomer}
+          onChange={(e) => setFilterCustomer(e.target.value)}
+        >
+          <option value="">Musteri (tum)</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="date_desc">Tarih (yeni)</option>
+          <option value="date_asc">Tarih (eski)</option>
+          <option value="customer_asc">Musteri A-Z</option>
+        </select>
+      </div>
+
+      {loading ? <div>Yukleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
       {!loading && !error ? (
@@ -205,27 +270,29 @@ export default function ReportsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Tarih</th>
                 <th className="px-4 py-3 font-medium">Rapor No</th>
-                <th className="px-4 py-3 font-medium">Tür</th>
+                <th className="px-4 py-3 font-medium">Musteri</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
-                <th className="px-4 py-3 font-medium">Gönderen</th>
-                <th className="px-4 py-3 font-medium">Alıcı</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
+                {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filtered.map((item) => (
                 <tr key={item.id} className="border-t border-ink/10">
                   <td className="px-4 py-3">{item.received_date}</td>
                   <td className="px-4 py-3">{item.report_no}</td>
-                  <td className="px-4 py-3">{item.report_type}</td>
+                  <td className="px-4 py-3">{customerMap.get(item.customer)?.name}</td>
                   <td className="px-4 py-3">{item.subject}</td>
-                  <td className="px-4 py-3">{item.sender}</td>
-                  <td className="px-4 py-3">{item.recipient}</td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/reports/${item.id}`}>
-                      Aç
+                      Ac
                     </Link>
                   </td>
+                  {isStaff ? (
+                    <td className="px-4 py-3">
+                      <button className="text-red-600" onClick={() => handleDelete(item.id)}>Sil</button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
