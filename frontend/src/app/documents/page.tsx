@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch, apiUpload, me } from "@/lib/api";
@@ -33,7 +33,7 @@ const DELIVERY = [
   { value: "EPOSTA", label: "E-posta" },
   { value: "ELDEN", label: "Elden" },
   { value: "EBYS", label: "EBYS" },
-  { value: "DIGER", label: "Diğer" }
+  { value: "DIGER", label: "Diger" }
 ];
 
 export default function DocumentsPage() {
