@@ -123,6 +123,13 @@ class Document(AuditBase):
         verbose_name = "Evrak"
         verbose_name_plural = "Evraklar"
 
+    def save(self, *args, **kwargs):
+        if (not self.doc_no or not self.serial) and self.doc_type and self.year:
+            doc_no, serial = next_document_number(self.doc_type, self.year)
+            self.doc_no = doc_no
+            self.serial = serial
+        super().save(*args, **kwargs)
+
 class Report(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
     report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor türü")
@@ -153,6 +160,18 @@ class Report(AuditBase):
     class Meta:
         verbose_name = "Rapor"
         verbose_name_plural = "Raporlar"
+
+    def save(self, *args, **kwargs):
+        if (
+            (not self.report_no or not self.type_cumulative or not self.year_serial_all)
+            and self.report_type
+            and self.year
+        ):
+            report_no, type_cum, year_serial = next_report_number(self.report_type, self.year)
+            self.report_no = report_no
+            self.type_cumulative = type_cum
+            self.year_serial_all = year_serial
+        super().save(*args, **kwargs)
 
 class File(AuditBase):
     filename = models.CharField(max_length=255, verbose_name="Dosya adı")
