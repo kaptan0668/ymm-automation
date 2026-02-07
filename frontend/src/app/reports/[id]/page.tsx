@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type ReportRow = {
   id: number;
@@ -55,36 +56,63 @@ export default function ReportDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">Report Detail</h1>
-          <p className="text-ink/60">{rep.report_no}</p>
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-ink/50">Rapor Detayi</div>
+            <h1 className="text-3xl font-semibold">{rep.report_no}</h1>
+            <div className="mt-1 text-sm text-ink/60">{rep.subject || "Konu yok"}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link className="text-sm text-terracotta" href={`/customers/${rep.customer}`}>
+              Musteri Karti
+            </Link>
+            <Button onClick={() => window.print()}>Yazdir</Button>
+          </div>
         </div>
-        <Button onClick={() => window.print()}>Print</Button>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 text-sm">
-        <div><b>Date:</b> {rep.received_date}</div>
-        <div><b>Type:</b> {rep.report_type}</div>
-        <div><b>Ref No:</b> {rep.reference_no}</div>
-        <div><b>Sender:</b> {rep.sender}</div>
-        <div><b>Recipient:</b> {rep.recipient}</div>
-        <div><b>Subject:</b> {rep.subject}</div>
-        <div><b>Delivery:</b> {rep.delivery_method}</div>
-        <div><b>Description:</b> {rep.description}</div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
+          <div className="grid gap-3">
+            <div><b>Tarih:</b> {rep.received_date || "-"}</div>
+            <div><b>Tur:</b> {rep.report_type}</div>
+            <div><b>Harici Sayi:</b> {rep.reference_no || "-"}</div>
+            <div><b>Teslim:</b> {rep.delivery_method || "-"}</div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
+          <div className="grid gap-3">
+            <div><b>Gonderen:</b> {rep.sender || "-"}</div>
+            <div><b>Alici:</b> {rep.recipient || "-"}</div>
+            <div><b>Konu:</b> {rep.subject || "-"}</div>
+            <div><b>Aciklama:</b> {rep.description || "-"}</div>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold">Attachments</h2>
-        <ul className="list-disc pl-5 text-sm">
-          {files.map((f) => (
-            <li key={f.id}>
-              <a className="text-terracotta" href={f.url} target="_blank" rel="noreferrer">
-                {f.filename}
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+        <h2 className="text-xl font-semibold">Ekler</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {files.length === 0 ? (
+            <div className="rounded-xl border border-ink/10 bg-white p-4 text-sm text-ink/60">
+              Bu rapora ait ek yok.
+            </div>
+          ) : (
+            files.map((f) => (
+              <a
+                key={f.id}
+                className="rounded-xl border border-ink/10 bg-white p-4 hover:bg-haze"
+                href={f.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div className="text-sm font-semibold">{f.filename}</div>
+                <div className="mt-1 text-xs text-ink/50">Indir</div>
               </a>
-            </li>
-          ))}
-        </ul>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
