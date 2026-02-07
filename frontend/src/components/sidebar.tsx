@@ -2,6 +2,7 @@
 
 const items = [
   { href: "/", label: "Gösterge" },
+  { href: "/login", label: "Giriş" },
   { href: "/customers", label: "Müşteri" },
   { href: "/documents", label: "Evrak" },
   { href: "/reports", label: "Rapor" }
