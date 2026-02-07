@@ -7,6 +7,7 @@ import { clearTokens } from "@/lib/auth";
 const items = [
   { href: "/", label: "Gosterge" },
   { href: "/customers", label: "Musteri" },
+  { href: "/contracts", label: "Sozlesmeler" },
   { href: "/documents", label: "Evrak" },
   { href: "/reports", label: "Rapor" },
   { href: "/settings", label: "Ayarlar" }

@@ -1,7 +1,9 @@
-﻿import os
+import os
 import uuid
 import boto3
 from botocore.client import Config
+from io import BytesIO
+from PyPDF2 import PdfReader
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -12,6 +14,7 @@ from .models import (
     Document,
     Report,
     File,
+    Contract,
     ContractJob,
     AuditLog,
     next_document_number,
@@ -23,8 +26,10 @@ from .serializers import (
     ReportSerializer,
     FileSerializer,
     ContractJobSerializer,
+    ContractSerializer,
 )
 from .tasks import process_contract_job
+from .contract_parser import parse_contract_text
 
 
 def _actor(request):
@@ -90,7 +95,7 @@ class AuditViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         actor = _actor(self.request)
         if actor and not actor.is_staff:
-            raise PermissionDenied("Silme sadece admin için izinlidir.")
+            raise PermissionDenied("Silme sadece admin icin izinlidir.")
         if hasattr(instance, "is_archived"):
             instance.is_archived = True
             if hasattr(instance, "updated_by"):
@@ -248,3 +253,129 @@ class ContractJobViewSet(AuditViewSet):
     def status(self, request, pk=None):
         job = self.get_object()
         return Response({"status": job.status})
+
+
+class ContractViewSet(AuditViewSet):
+    queryset = Contract.objects.all()
+    serializer_class = ContractSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        customer = self.request.query_params.get("customer")
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        return qs
+
+    @action(detail=False, methods=["post"])
+    def upload(self, request):
+        upload = request.FILES.get("file")
+        if not upload:
+            return Response({"error": "file is required"}, status=400)
+
+        raw = upload.read()
+        text = ""
+        try:
+            reader = PdfReader(BytesIO(raw))
+            for page in reader.pages:
+                text += (page.extract_text() or "") + "\n"
+        except Exception:
+            text = ""
+
+        parsed = parse_contract_text(text or "")
+
+        for key in [
+            "tax_no",
+            "tax_office",
+            "customer_name",
+            "address",
+            "phone",
+            "email",
+            "contact_person",
+            "contract_no",
+            "contract_type",
+            "period_start_month",
+            "period_start_year",
+            "period_end_month",
+            "period_end_year",
+        ]:
+            if request.data.get(key):
+                parsed[key] = request.data.get(key)
+
+        tax_no = parsed.get("tax_no")
+        if not tax_no:
+            return Response({"error": "Vergi numarasi bulunamadi."}, status=400)
+
+        customer, created = Customer.objects.get_or_create(
+            tax_no=tax_no,
+            defaults={
+                "name": parsed.get("customer_name") or "Bilinmeyen Musteri",
+                "tax_office": parsed.get("tax_office"),
+                "address": parsed.get("address"),
+                "phone": parsed.get("phone"),
+                "email": parsed.get("email"),
+                "contact_person": parsed.get("contact_person"),
+                "created_by": _actor(request),
+                "updated_by": _actor(request),
+            },
+        )
+        if not created:
+            changed = False
+            for field, key in [
+                ("name", "customer_name"),
+                ("tax_office", "tax_office"),
+                ("address", "address"),
+                ("phone", "phone"),
+                ("email", "email"),
+                ("contact_person", "contact_person"),
+            ]:
+                value = parsed.get(key)
+                if value and not getattr(customer, field):
+                    setattr(customer, field, value)
+                    changed = True
+            if changed:
+                customer.updated_by = _actor(request)
+                customer.save()
+
+        client = _s3_client()
+        bucket = os.environ.get("MINIO_BUCKET", "ymm-files")
+        _ensure_bucket(client, bucket)
+
+        key = f"{uuid.uuid4()}_{upload.name}"
+        client.upload_fileobj(
+            BytesIO(raw),
+            bucket,
+            key,
+            ExtraArgs={"ContentType": upload.content_type or "application/octet-stream"},
+        )
+
+        public_endpoint = os.environ.get("MINIO_PUBLIC_ENDPOINT")
+        endpoint = public_endpoint or os.environ.get("MINIO_ENDPOINT", "localhost:9000")
+        secure = os.environ.get("MINIO_SECURE", "false").lower() == "true"
+        scheme = "https" if secure else "http"
+        url = f"{scheme}://{endpoint}/{bucket}/{key}"
+
+        contract = Contract.objects.create(
+            customer=customer,
+            contract_no=parsed.get("contract_no"),
+            contract_date=parsed.get("contract_date"),
+            contract_type=parsed.get("contract_type"),
+            period_start_month=parsed.get("period_start_month"),
+            period_start_year=parsed.get("period_start_year"),
+            period_end_month=parsed.get("period_end_month"),
+            period_end_year=parsed.get("period_end_year"),
+            filename=upload.name,
+            content_type=upload.content_type or "application/octet-stream",
+            size=upload.size,
+            file_url=url,
+            created_by=_actor(request),
+            updated_by=_actor(request),
+        )
+
+        AuditLog.objects.create(
+            model="Contract",
+            object_id=str(contract.pk),
+            action="create",
+            actor=_actor(request),
+        )
+
+        return Response(ContractSerializer(contract).data, status=201)

@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
 type Customer = {
   id: number;
   name: string;
   tax_no: string;
+  tax_office?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  contact_person?: string;
 };
 
 type DocumentRow = {
@@ -43,12 +49,24 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 
 export default function CustomerCardPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
+  const [taxNo, setTaxNo] = useState("");
+  const [taxOffice, setTaxOffice] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -63,6 +81,13 @@ export default function CustomerCardPage() {
         setDocs(d);
         setReports(r);
         setFiles(f);
+        setName(c.name || "");
+        setTaxNo(c.tax_no || "");
+        setTaxOffice(c.tax_office || "");
+        setAddress(c.address || "");
+        setPhone(c.phone || "");
+        setEmail(c.email || "");
+        setContactPerson(c.contact_person || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -70,6 +95,41 @@ export default function CustomerCardPage() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (searchParams?.get("edit") === "1") {
+      setEditing(true);
+    }
+  }, [searchParams]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!customer) return;
+    setSaving(true);
+    setNotice(null);
+    try {
+      const updated = await apiFetch<Customer>(`/api/customers/${customer.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name,
+          tax_no: taxNo,
+          tax_office: taxOffice || null,
+          address: address || null,
+          phone: phone || null,
+          email: email || null,
+          contact_person: contactPerson || null
+        })
+      });
+      setCustomer(updated);
+      setEditing(false);
+      setNotice("Kaydedildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNotice(`Kaydedilemedi: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!customer) return <div>Yukleniyor...</div>;
@@ -88,6 +148,9 @@ export default function CustomerCardPage() {
             <div className="mt-1 text-sm text-ink/60">Vergi No: {customer.tax_no}</div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setEditing((v) => !v)}>
+              {editing ? "Iptal" : "Duzenle"}
+            </Button>
             <Button onClick={() => window.print()}>Yazdir</Button>
           </div>
         </div>
@@ -105,7 +168,35 @@ export default function CustomerCardPage() {
             <div className="text-2xl font-semibold">{fileCount}</div>
           </div>
         </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-ink/10 bg-white p-4 text-sm">
+            <div><b>Vergi Dairesi:</b> {customer.tax_office || "-"}</div>
+            <div><b>Adres:</b> {customer.address || "-"}</div>
+          </div>
+          <div className="rounded-xl border border-ink/10 bg-white p-4 text-sm">
+            <div><b>Telefon:</b> {customer.phone || "-"}</div>
+            <div><b>E-posta:</b> {customer.email || "-"}</div>
+            <div><b>Yetkili:</b> {customer.contact_person || "-"}</div>
+          </div>
+        </div>
       </div>
+      {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
+
+      {editing ? (
+        <form onSubmit={handleSave} className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
+          <div className="text-sm text-ink/60">Musteri bilgilerini duzenle</div>
+          <Input placeholder="Musteri adi" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Vergi no" value={taxNo} onChange={(e) => setTaxNo(e.target.value)} />
+          <Input placeholder="Vergi dairesi" value={taxOffice} onChange={(e) => setTaxOffice(e.target.value)} />
+          <Input placeholder="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input placeholder="Yetkili kisi" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+          <Button type="submit" disabled={saving}>
+            {saving ? "Kaydediliyor..." : "Kaydet"}
+          </Button>
+        </form>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">

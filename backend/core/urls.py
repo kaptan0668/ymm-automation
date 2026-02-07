@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import CustomerViewSet, DocumentViewSet, ReportViewSet, FileViewSet, ContractJobViewSet
+from .views import CustomerViewSet, DocumentViewSet, ReportViewSet, FileViewSet, ContractJobViewSet, ContractViewSet
 
 router = DefaultRouter()
 router.register(r"customers", CustomerViewSet)
@@ -12,6 +12,7 @@ router.register(r"documents", DocumentViewSet)
 router.register(r"reports", ReportViewSet)
 router.register(r"files", FileViewSet)
 router.register(r"contract-jobs", ContractJobViewSet)
+router.register(r"contracts", ContractViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),

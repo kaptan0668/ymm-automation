@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { apiFetch, apiUpload } from "@/lib/api";
@@ -11,6 +11,11 @@ type Customer = {
   id: number;
   name: string;
   tax_no: string;
+  tax_office?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  contact_person?: string;
 };
 
 type FileRow = {
@@ -25,6 +30,11 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [taxNo, setTaxNo] = useState("");
+  const [taxOffice, setTaxOffice] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -54,7 +64,15 @@ export default function CustomersPage() {
     try {
       const customer = await apiFetch<Customer>("/api/customers/", {
         method: "POST",
-        body: JSON.stringify({ name, tax_no: taxNo })
+        body: JSON.stringify({
+          name,
+          tax_no: taxNo,
+          tax_office: taxOffice || null,
+          address: address || null,
+          phone: phone || null,
+          email: email || null,
+          contact_person: contactPerson || null
+        })
       });
 
       if (contractFile) {
@@ -67,6 +85,11 @@ export default function CustomersPage() {
 
       setName("");
       setTaxNo("");
+      setTaxOffice("");
+      setAddress("");
+      setPhone("");
+      setEmail("");
+      setContactPerson("");
       await load();
       setNotice("Müşteri eklendi.");
     } catch {
@@ -86,6 +109,11 @@ export default function CustomersPage() {
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
         <Input placeholder="Müşteri adı" value={name} onChange={(e) => setName(e.target.value)} />
         <Input placeholder="Vergi no" value={taxNo} onChange={(e) => setTaxNo(e.target.value)} />
+        <Input placeholder="Vergi dairesi" value={taxOffice} onChange={(e) => setTaxOffice(e.target.value)} />
+        <Input placeholder="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input placeholder="Yetkili kişi" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
         <Input type="file" onChange={(e) => setContractFile(e.target.files?.[0] || null)} />
         <Button type="submit" disabled={!token || saving || !name || !taxNo}>
           {saving ? "Kaydediliyor..." : "Müşteri Ekle"}
@@ -104,6 +132,7 @@ export default function CustomersPage() {
                 <th className="px-4 py-3 font-medium">Müşteri</th>
                 <th className="px-4 py-3 font-medium">Vergi No</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
+                <th className="px-4 py-3 font-medium">Duzenle</th>
               </tr>
             </thead>
             <tbody>
@@ -114,6 +143,11 @@ export default function CustomersPage() {
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/customers/${item.id}`}>
                       Kartı Gör
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link className="text-terracotta" href={`/customers/${item.id}?edit=1`}>
+                      Duzenle
                     </Link>
                   </td>
                 </tr>

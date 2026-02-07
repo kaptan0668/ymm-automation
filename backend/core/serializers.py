@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Customer, Document, Report, File, ContractJob
+from .models import Customer, Document, Report, File, ContractJob, Contract
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,7 +28,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Tarih zorunludur.")
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("GeÃ§miÅŸ tarihli evrak girilemez.")
+            raise serializers.ValidationError("GeÃƒÂ§miÃ…Å¸ tarihli evrak girilemez.")
         return value
 
     def validate(self, attrs):
@@ -37,7 +37,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             locked_fields = ["customer", "doc_type", "year", "serial", "doc_no", "received_date"]
             for field in locked_fields:
                 if field in attrs and attrs[field] != getattr(instance, field):
-                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
+                    raise serializers.ValidationError(f"{field} deÃ„Å¸iÃ…Å¸tirilemez.")
         return attrs
 
 class ReportSerializer(serializers.ModelSerializer):
@@ -62,7 +62,7 @@ class ReportSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Tarih zorunludur.")
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("GeÃ§miÅŸ tarihli rapor girilemez.")
+            raise serializers.ValidationError("GeÃƒÂ§miÃ…Å¸ tarihli rapor girilemez.")
         return value
 
     def validate(self, attrs):
@@ -73,13 +73,13 @@ class ReportSerializer(serializers.ModelSerializer):
         end_year = attrs.get("period_end_year", getattr(instance, "period_end_year", None))
 
         if not all([start_month, start_year, end_month, end_year]):
-            raise serializers.ValidationError("DÃ¶nem baÅŸlangÄ±Ã§ ve bitiÅŸ bilgileri zorunludur.")
+            raise serializers.ValidationError("DÃƒÂ¶nem baÃ…Å¸langÃ„Â±ÃƒÂ§ ve bitiÃ…Å¸ bilgileri zorunludur.")
 
         if not (1 <= int(start_month) <= 12 and 1 <= int(end_month) <= 12):
-            raise serializers.ValidationError("Ay bilgisi 1-12 aralÄ±ÄŸÄ±nda olmalÄ±dÄ±r.")
+            raise serializers.ValidationError("Ay bilgisi 1-12 aralÃ„Â±Ã„Å¸Ã„Â±nda olmalÃ„Â±dÃ„Â±r.")
 
         if (end_year, end_month) < (start_year, start_month):
-            raise serializers.ValidationError("DÃ¶nem bitiÅŸi baÅŸlangÄ±Ã§tan Ã¶nce olamaz.")
+            raise serializers.ValidationError("DÃƒÂ¶nem bitiÃ…Å¸i baÃ…Å¸langÃ„Â±ÃƒÂ§tan ÃƒÂ¶nce olamaz.")
 
         if instance:
             locked_fields = [
@@ -97,7 +97,7 @@ class ReportSerializer(serializers.ModelSerializer):
             ]
             for field in locked_fields:
                 if field in attrs and attrs[field] != getattr(instance, field):
-                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
+                    raise serializers.ValidationError(f"{field} deÃ„Å¸iÃ…Å¸tirilemez.")
 
         return attrs
 
@@ -112,3 +112,10 @@ class ContractJobSerializer(serializers.ModelSerializer):
         model = ContractJob
         fields = "__all__"
         read_only_fields = ("status", "created_by", "updated_by", "created_at", "updated_at", "is_archived")
+
+
+class ContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contract
+        fields = "__all__"
+        read_only_fields = ("created_by", "updated_by", "created_at", "updated_at", "is_archived")
