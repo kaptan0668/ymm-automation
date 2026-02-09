@@ -136,11 +136,6 @@ export default function Dashboard() {
                 <div>Raporlar</div>
                 <div className="text-ink/60">{loading ? "—" : `${openReports} açık / ${doneReports} tamam`}</div>
               </div>
-              <div className="mt-4">
-                <Button variant="outline" asChild>
-                  <Link href="/settings">Ayarlar</Link>
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>

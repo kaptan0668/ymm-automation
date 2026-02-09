@@ -101,6 +101,7 @@ export default function DocumentsPage() {
   const [filterText, setFilterText] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
 
   async function load() {
@@ -149,6 +150,9 @@ export default function DocumentsPage() {
     }
     if (filterType) {
       rows = rows.filter((r) => r.doc_type === filterType);
+    }
+    if (filterStatus) {
+      rows = rows.filter((r) => (r.status || "OPEN") === filterStatus);
     }
     if (filterText) {
       const t = filterText.toLowerCase();
@@ -378,13 +382,13 @@ export default function DocumentsPage() {
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
-        <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
-        <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-          value={filterCustomer}
-          onChange={(e) => setFilterCustomer(e.target.value)}
-        >
+        <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
+          <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+          <select
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={filterCustomer}
+            onChange={(e) => setFilterCustomer(e.target.value)}
+          >
           <option value="">Müşteri (tüm)</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
@@ -392,28 +396,37 @@ export default function DocumentsPage() {
             </option>
           ))}
         </select>
-        <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        >
-          <option value="">Evrak türü (tüm)</option>
-          {DOC_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="date_desc">Tarih (yeni)</option>
-          <option value="date_asc">Tarih (eski)</option>
-          <option value="customer_asc">Müşteri A-Z</option>
-        </select>
-      </div>
+          <select
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <option value="">Evrak türü (tüm)</option>
+            {DOC_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="">Durum (tüm)</option>
+            <option value="OPEN">Açık</option>
+            <option value="DONE">Tamamlandı</option>
+          </select>
+          <select
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="date_desc">Tarih (yeni)</option>
+            <option value="date_asc">Tarih (eski)</option>
+            <option value="customer_asc">Müşteri A-Z</option>
+          </select>
+        </div>
 
       {loading ? <div>Yükleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
@@ -441,17 +454,25 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3">{customerMap.get(item.customer)?.name}</td>
                   <td className="px-4 py-3">{item.subject}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={item.status === "DONE" ? "text-emerald-700" : "text-ink/70"}>
-                        {item.status === "DONE" ? "Tamamlandı" : "Açık"}
-                      </span>
-                      <button
-                        className="text-xs text-terracotta"
-                        onClick={() => handleToggleStatus(item.id, item.status)}
+                    <button
+                      className={
+                        item.status === "DONE"
+                          ? "inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"
+                          : "inline-flex items-center gap-2 rounded-full border border-ink/20 bg-white px-2.5 py-1 text-xs font-medium text-ink/70"
+                      }
+                      onClick={() => handleToggleStatus(item.id, item.status)}
+                    >
+                      <span
+                        className={
+                          item.status === "DONE"
+                            ? "inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white"
+                            : "inline-flex h-4 w-4 items-center justify-center rounded-full border border-ink/30 text-[10px] text-ink/60"
+                        }
                       >
-                        {item.status === "DONE" ? "Geri al" : "Tamamla"}
-                      </button>
-                    </div>
+                        {item.status === "DONE" ? "✓" : "○"}
+                      </span>
+                      {item.status === "DONE" ? "Tamamlandı" : "Açık"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/documents/${item.id}`}>

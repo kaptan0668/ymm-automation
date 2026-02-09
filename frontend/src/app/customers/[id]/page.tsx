@@ -30,6 +30,7 @@ type DocumentRow = {
   doc_no: string;
   received_date?: string;
   subject?: string;
+  status?: string;
   files?: FileRow[];
 };
 
@@ -38,6 +39,7 @@ type ReportRow = {
   report_no: string;
   received_date?: string;
   subject?: string;
+  status?: string;
   files?: FileRow[];
 };
 
@@ -347,14 +349,33 @@ export default function CustomerCardPage() {
           ) : (
             <div className="space-y-3">
               {docs.map((d) => (
-                <div key={d.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                <div
+                  key={d.id}
+                  className={
+                    d.status === "DONE"
+                      ? "rounded-xl border border-emerald-100 bg-emerald-50/40 p-4"
+                      : "rounded-xl border border-ink/10 bg-white p-4"
+                  }
+                >
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-ink/60">{d.received_date || "-"}</div>
                     <Link className="text-sm text-terracotta" href={`/documents/${d.id}`}>
                       Görüntüle
                     </Link>
                   </div>
-                  <div className="mt-1 text-sm font-semibold">{d.doc_no}</div>
+                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold">
+                    {d.doc_no}
+                    <span
+                      className={
+                        d.status === "DONE"
+                          ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                          : "inline-flex items-center gap-1 rounded-full border border-ink/20 bg-white px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                      }
+                    >
+                      <span>{d.status === "DONE" ? "✓" : "○"}</span>
+                      {d.status === "DONE" ? "Tamamlandı" : "Açık"}
+                    </span>
+                  </div>
                   <div className="mt-1 text-sm text-ink/60">{d.subject || "Konu yok"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {(d.files || []).map((f) => (
@@ -389,14 +410,33 @@ export default function CustomerCardPage() {
           ) : (
             <div className="space-y-3">
               {reports.map((r) => (
-                <div key={r.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                <div
+                  key={r.id}
+                  className={
+                    r.status === "DONE"
+                      ? "rounded-xl border border-emerald-100 bg-emerald-50/40 p-4"
+                      : "rounded-xl border border-ink/10 bg-white p-4"
+                  }
+                >
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-ink/60">{r.received_date || "-"}</div>
                     <Link className="text-sm text-terracotta" href={`/reports/${r.id}`}>
                       Görüntüle
                     </Link>
                   </div>
-                  <div className="mt-1 text-sm font-semibold">{r.report_no}</div>
+                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold">
+                    {r.report_no}
+                    <span
+                      className={
+                        r.status === "DONE"
+                          ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                          : "inline-flex items-center gap-1 rounded-full border border-ink/20 bg-white px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                      }
+                    >
+                      <span>{r.status === "DONE" ? "✓" : "○"}</span>
+                      {r.status === "DONE" ? "Tamamlandı" : "Açık"}
+                    </span>
+                  </div>
                   <div className="mt-1 text-sm text-ink/60">{r.subject || "Konu yok"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {(r.files || []).map((f) => (
