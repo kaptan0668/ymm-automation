@@ -436,7 +436,12 @@ def backup(request):
     ts = timezone.now().strftime("%Y%m%d_%H%M%S")
     filename = f"/app/backups/backup_{ts}.json"
     with open(filename, "w", encoding="utf-8") as f:
-        call_command("dumpdata", exclude=["core.file"], stdout=f)
+        call_command(
+            "dumpdata",
+            "core",
+            exclude=["core.file"],
+            stdout=f,
+        )
     return FileResponse(open(filename, "rb"), as_attachment=True, filename=f"backup_{ts}.json")
 
 
