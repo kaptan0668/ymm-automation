@@ -13,6 +13,7 @@ type DocumentRow = {
   doc_type: string;
   year: number;
   customer: number;
+  status?: string;
   received_date?: string;
   sender?: string;
   recipient?: string;
@@ -247,6 +248,20 @@ export default function DocumentsPage() {
     }
   }
 
+  async function handleToggleStatus(id: number, current?: string) {
+    const next = current === "DONE" ? "OPEN" : "DONE";
+    try {
+      await apiFetch(`/api/documents/${id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: next })
+      });
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      alert(`Durum güncellenemedi: ${msg}`);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -412,6 +427,7 @@ export default function DocumentsPage() {
                 <th className="px-4 py-3 font-medium">Evrak No</th>
                 <th className="px-4 py-3 font-medium">Müşteri</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
+                <th className="px-4 py-3 font-medium">Durum</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
                 <th className="px-4 py-3 font-medium">Düzenle</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
@@ -424,6 +440,19 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3">{item.doc_no}</td>
                   <td className="px-4 py-3">{customerMap.get(item.customer)?.name}</td>
                   <td className="px-4 py-3">{item.subject}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className={item.status === "DONE" ? "text-emerald-700" : "text-ink/70"}>
+                        {item.status === "DONE" ? "Tamamlandı" : "Açık"}
+                      </span>
+                      <button
+                        className="text-xs text-terracotta"
+                        onClick={() => handleToggleStatus(item.id, item.status)}
+                      >
+                        {item.status === "DONE" ? "Geri al" : "Tamamla"}
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/documents/${item.id}`}>
                       Aç

@@ -12,6 +12,7 @@ type DocumentRow = {
   doc_no: string;
   doc_type: string;
   year: number;
+  status?: string;
   received_date?: string;
   reference_no?: string;
   sender?: string;
@@ -187,6 +188,22 @@ export default function DocumentDetailPage() {
     setFiles(updatedFiles);
   }
 
+  async function handleToggleStatus() {
+    if (!doc) return;
+    const next = doc.status === "DONE" ? "OPEN" : "DONE";
+    try {
+      await apiFetch(`/api/documents/${doc.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: next })
+      });
+      const updated = await apiFetch<DocumentRow>(`/api/documents/${id}/`);
+      setDoc(updated);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNotice(`Durum güncellenemedi: ${msg}`);
+    }
+  }
+
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!doc) return <div>Yükleniyor...</div>;
 
@@ -198,11 +215,19 @@ export default function DocumentDetailPage() {
             <div className="text-xs uppercase tracking-widest text-ink/50">Evrak Detayı</div>
             <h1 className="text-3xl font-semibold">{doc.doc_no}</h1>
             <div className="mt-1 text-sm text-ink/60">{doc.subject || "Konu yok"}</div>
+            <div className="mt-2 text-sm">
+              <span className={doc.status === "DONE" ? "text-emerald-700" : "text-ink/70"}>
+                {doc.status === "DONE" ? "Tamamlandı" : "Açık"}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link className="text-sm text-terracotta print-hide" href={`/customers/${doc.customer}`}>
               Müşteri Kartı
             </Link>
+            <Button className="print-hide" variant="outline" onClick={handleToggleStatus}>
+              {doc.status === "DONE" ? "Geri al" : "Tamamla"}
+            </Button>
             <Button className="print-hide" variant="outline" onClick={() => setEditing((v) => !v)}>
               {editing ? "İptal" : "Düzenle"}
             </Button>

@@ -29,6 +29,11 @@ DELIVERY_METHODS = [
     ("DIGER", "Diğer"),
 ]
 
+STATUS_CHOICES = [
+    ("OPEN", "Açık"),
+    ("DONE", "Tamamlandı"),
+]
+
 
 def default_year():
     return date.today().year
@@ -122,6 +127,12 @@ class Document(AuditBase):
     year = models.IntegerField(verbose_name="Yıl")
     serial = models.IntegerField(verbose_name="Seri")
     doc_no = models.CharField(max_length=64, unique=True, verbose_name="Evrak numarası")
+    status = models.CharField(
+        max_length=8,
+        choices=STATUS_CHOICES,
+        default="OPEN",
+        verbose_name="Durum",
+    )
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
     reference_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Harici sayı")
     sender = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen")
@@ -178,6 +189,12 @@ class Report(AuditBase):
     type_cumulative = models.IntegerField(verbose_name="Tür bazlı kümülatif sayaç")
     year_serial_all = models.IntegerField(verbose_name="Yıl içi toplam sayaç")
     report_no = models.CharField(max_length=64, unique=True, verbose_name="Rapor numarası")
+    status = models.CharField(
+        max_length=8,
+        choices=STATUS_CHOICES,
+        default="OPEN",
+        verbose_name="Durum",
+    )
     received_date = models.DateField(null=True, blank=True, verbose_name="Tarih")
     period_start_month = models.IntegerField(null=True, blank=True, verbose_name="Dönem başlangıç ay")
     period_start_year = models.IntegerField(null=True, blank=True, verbose_name="Dönem başlangıç yıl")
