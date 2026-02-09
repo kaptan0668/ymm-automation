@@ -36,10 +36,24 @@ body::before {
   body {
     background: white !important;
   }
+  body::before {
+    display: none !important;
+  }
   aside, nav, .print-hide {
     display: none !important;
   }
   .print-area {
     display: block !important;
+    width: 100% !important;
+  }
+  .print-area .rounded-2xl,
+  .print-area .rounded-xl {
+    box-shadow: none !important;
+    background: white !important;
+    border: 1px solid #dcdcdc !important;
+  }
+  .print-area .bg-haze,
+  .print-area .bg-white\/80 {
+    background: white !important;
   }
 }
