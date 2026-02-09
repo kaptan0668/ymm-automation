@@ -1,4 +1,4 @@
-import os
+ï»¿import os
 from urllib.parse import urlparse
 
 import boto3
@@ -107,7 +107,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             return value
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("Geçmiþ tarihli evrak girilemez.")
+            raise serializers.ValidationError("GeÃ§miÅŸ tarihli evrak girilemez.")
         return value
 
     def validate(self, attrs):
@@ -116,7 +116,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             locked_fields = ["customer", "doc_type", "year", "serial", "doc_no", "received_date"]
             for field in locked_fields:
                 if field in attrs and attrs[field] != getattr(instance, field):
-                    raise serializers.ValidationError(f"{field} deðiþtirilemez.")
+                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
         return attrs
 
     def create(self, validated_data):
@@ -128,11 +128,11 @@ class DocumentSerializer(serializers.ModelSerializer):
 
         if manual_serial or manual_doc_no:
             if not (user and user.is_staff):
-                raise serializers.ValidationError("Manuel numara sadece admin içindir.")
+                raise serializers.ValidationError("Manuel numara sadece admin iÃ§indir.")
             if year and year >= 2026:
-                raise serializers.ValidationError("2026 ve sonrasý için manuel numara verilemez.")
+                raise serializers.ValidationError("2026 ve sonrasÄ± iÃ§in manuel numara verilemez.")
             if not manual_serial or not manual_doc_no:
-                raise serializers.ValidationError("Manuel seri ve evrak numarasý zorunludur.")
+                raise serializers.ValidationError("Manuel seri ve evrak numarasÄ± zorunludur.")
             validated_data["serial"] = manual_serial
             validated_data["doc_no"] = manual_doc_no
 
@@ -178,7 +178,7 @@ class ReportSerializer(serializers.ModelSerializer):
             return value
         today = timezone.localdate()
         if value < today:
-            raise serializers.ValidationError("Geçmiþ tarihli rapor girilemez.")
+            raise serializers.ValidationError("GeÃ§miÅŸ tarihli rapor girilemez.")
         return value
 
     def validate(self, attrs):
@@ -189,13 +189,13 @@ class ReportSerializer(serializers.ModelSerializer):
         end_year = attrs.get("period_end_year", getattr(instance, "period_end_year", None))
 
         if not all([start_month, start_year, end_month, end_year]):
-            raise serializers.ValidationError("Dönem baþlangýç ve bitiþ bilgileri zorunludur.")
+            raise serializers.ValidationError("DÃ¶nem baÅŸlangÄ±Ã§ ve bitiÅŸ bilgileri zorunludur.")
 
         if not (1 <= int(start_month) <= 12 and 1 <= int(end_month) <= 12):
-            raise serializers.ValidationError("Ay bilgisi 1-12 aralýðýnda olmalýdýr.")
+            raise serializers.ValidationError("Ay bilgisi 1-12 aralÄ±ÄŸÄ±nda olmalÄ±dÄ±r.")
 
         if (end_year, end_month) < (start_year, start_month):
-            raise serializers.ValidationError("Dönem bitiþi baþlangýçtan önce olamaz.")
+            raise serializers.ValidationError("DÃ¶nem bitiÅŸi baÅŸlangÄ±Ã§tan Ã¶nce olamaz.")
 
         if instance:
             locked_fields = [
@@ -213,7 +213,7 @@ class ReportSerializer(serializers.ModelSerializer):
             ]
             for field in locked_fields:
                 if field in attrs and attrs[field] != getattr(instance, field):
-                    raise serializers.ValidationError(f"{field} deðiþtirilemez.")
+                    raise serializers.ValidationError(f"{field} deÄŸiÅŸtirilemez.")
 
         return attrs
 
@@ -227,11 +227,11 @@ class ReportSerializer(serializers.ModelSerializer):
 
         if manual_report_no or manual_type_cumulative or manual_year_serial_all:
             if not (user and user.is_staff):
-                raise serializers.ValidationError("Manuel numara sadece admin içindir.")
+                raise serializers.ValidationError("Manuel numara sadece admin iÃ§indir.")
             if year and year >= 2026:
-                raise serializers.ValidationError("2026 ve sonrasý için manuel numara verilemez.")
+                raise serializers.ValidationError("2026 ve sonrasÄ± iÃ§in manuel numara verilemez.")
             if not (manual_report_no and manual_type_cumulative and manual_year_serial_all):
-                raise serializers.ValidationError("Manuel rapor no ve sayaçlar zorunludur.")
+                raise serializers.ValidationError("Manuel rapor no ve sayaÃ§lar zorunludur.")
             validated_data["report_no"] = manual_report_no
             validated_data["type_cumulative"] = manual_type_cumulative
             validated_data["year_serial_all"] = manual_year_serial_all
@@ -276,6 +276,7 @@ class AppSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppSetting
         fields = "__all__"
+
 
 
 
