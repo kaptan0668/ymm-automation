@@ -8,7 +8,7 @@ export function resolveApiBase() {
     const url = new URL(window.location.href);
     const host = url.hostname;
     const protocol = url.protocol;
-    return `${protocol}//${host}:18000`;
+    return `${protocol}//${host}:18100`;
   }
   return "";
 }
@@ -20,7 +20,7 @@ export function resolveAdminBase() {
     const url = new URL(window.location.href);
     const host = url.hostname;
     const protocol = url.protocol;
-    return `${protocol}//${host}:18000`;
+    return `${protocol}//${host}:18100`;
   }
   return "";
 }
@@ -91,5 +91,28 @@ export async function changePassword(old_password: string, new_password: string)
   return apiFetch<{ status: string }>("/api/auth/change-password/", {
     method: "POST",
     body: JSON.stringify({ old_password, new_password })
+  });
+}
+
+export async function getSettings() {
+  return apiFetch<{ id: number; working_year: number; reference_year: number }>("/api/settings/");
+}
+
+export async function updateSettings(data: { working_year?: number; reference_year?: number }) {
+  return apiFetch<{ id: number; working_year: number; reference_year: number }>("/api/settings/", {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+}
+
+export async function updateCounter(data: {
+  kind: "report_global" | "report_year" | "document";
+  year?: number;
+  doc_type?: string;
+  last_serial: number;
+}) {
+  return apiFetch<{ status: string }>("/api/admin-counters/", {
+    method: "POST",
+    body: JSON.stringify(data)
   });
 }

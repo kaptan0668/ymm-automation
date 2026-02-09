@@ -4,7 +4,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import CustomerViewSet, DocumentViewSet, ReportViewSet, FileViewSet, ContractJobViewSet, ContractViewSet
+from .views import (
+    CustomerViewSet,
+    DocumentViewSet,
+    ReportViewSet,
+    FileViewSet,
+    ContractJobViewSet,
+    ContractViewSet,
+    SettingsViewSet,
+    CounterAdminViewSet,
+    backup,
+)
 
 router = DefaultRouter()
 router.register(r"customers", CustomerViewSet)
@@ -13,6 +23,8 @@ router.register(r"reports", ReportViewSet)
 router.register(r"files", FileViewSet)
 router.register(r"contract-jobs", ContractJobViewSet)
 router.register(r"contracts", ContractViewSet)
+router.register(r"settings", SettingsViewSet, basename="settings")
+router.register(r"admin-counters", CounterAdminViewSet, basename="admin-counters")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -53,4 +65,5 @@ def change_password(request):
 urlpatterns += [
     path("auth/me/", me, name="auth_me"),
     path("auth/change-password/", change_password, name="auth_change_password"),
+    path("admin/backup/", backup, name="admin_backup"),
 ]

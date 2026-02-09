@@ -1,4 +1,4 @@
-import os
+﻿import os
 import uuid
 import boto3
 from botocore.client import Config
@@ -6,9 +6,12 @@ from io import BytesIO
 from PyPDF2 import PdfReader
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.exceptions import PermissionDenied
+from django.core.management import call_command
+from django.http import FileResponse
+from django.utils import timezone
 from .models import (
     Customer,
     Document,
@@ -17,6 +20,10 @@ from .models import (
     Contract,
     ContractJob,
     AuditLog,
+    AppSetting,
+    DocumentCounter,
+    ReportCounterGlobal,
+    ReportCounterYearAll,
     next_document_number,
     next_report_number,
 )
@@ -27,6 +34,7 @@ from .serializers import (
     FileSerializer,
     ContractJobSerializer,
     ContractSerializer,
+    AppSettingSerializer,
 )
 from .tasks import process_contract_job
 from .contract_parser import parse_contract_text
@@ -95,7 +103,7 @@ class AuditViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         actor = _actor(self.request)
         if actor and not actor.is_staff:
-            raise PermissionDenied("Silme sadece admin icin izinlidir.")
+            raise PermissionDenied("Silme sadece admin için izinlidir.")
         if hasattr(instance, "is_archived"):
             instance.is_archived = True
             if hasattr(instance, "updated_by"):
@@ -302,40 +310,17 @@ class ContractViewSet(AuditViewSet):
             if request.data.get(key):
                 parsed[key] = request.data.get(key)
 
-        tax_no = parsed.get("tax_no")
-        if not tax_no:
-            return Response({"error": "Vergi numarasi bulunamadi."}, status=400)
+        customer_id = request.data.get("customer")
+        tax_no = parsed.get("tax_no") or request.data.get("tax_no")
 
-        customer, created = Customer.objects.get_or_create(
-            tax_no=tax_no,
-            defaults={
-                "name": parsed.get("customer_name") or f"Musteri {tax_no}",
-                "tax_office": parsed.get("tax_office"),
-                "address": parsed.get("address"),
-                "phone": parsed.get("phone"),
-                "email": parsed.get("email"),
-                "contact_person": parsed.get("contact_person"),
-                "created_by": _actor(request),
-                "updated_by": _actor(request),
-            },
-        )
-        if not created:
-            changed = False
-            for field, key in [
-                ("name", "customer_name"),
-                ("tax_office", "tax_office"),
-                ("address", "address"),
-                ("phone", "phone"),
-                ("email", "email"),
-                ("contact_person", "contact_person"),
-            ]:
-                value = parsed.get(key)
-                if value and not getattr(customer, field):
-                    setattr(customer, field, value)
-                    changed = True
-            if changed:
-                customer.updated_by = _actor(request)
-                customer.save()
+        customer = None
+        if customer_id:
+            customer = Customer.objects.filter(id=customer_id).first()
+        elif tax_no:
+            customer = Customer.objects.filter(tax_no=tax_no).first()
+
+        if not customer:
+            return Response({"error": "Müşteri bulunamadı. Lütfen müşteri seçin."}, status=400)
 
         client = _s3_client()
         bucket = os.environ.get("MINIO_BUCKET", "ymm-files")
@@ -380,3 +365,78 @@ class ContractViewSet(AuditViewSet):
         )
 
         return Response(ContractSerializer(contract).data, status=201)
+
+
+def _get_settings():
+    obj = AppSetting.objects.first()
+    if not obj:
+        obj = AppSetting.objects.create()
+    return obj
+
+
+class SettingsViewSet(viewsets.ViewSet):
+    def list(self, request):
+        obj = _get_settings()
+        return Response(AppSettingSerializer(obj).data)
+
+    def create(self, request):
+        user = _actor(request)
+        if not user or not user.is_staff:
+            raise PermissionDenied("Sadece admin ayarları güncelleyebilir.")
+        obj = _get_settings()
+        serializer = AppSettingSerializer(obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class CounterAdminViewSet(viewsets.ViewSet):
+    def create(self, request):
+        user = _actor(request)
+        if not user or not user.is_staff:
+            raise PermissionDenied("Sadece admin sayaçları güncelleyebilir.")
+        kind = request.data.get("kind")
+        if kind == "report_global":
+            year = int(request.data.get("year") or 0)
+            if year and year > 2025:
+                return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
+            value = int(request.data.get("last_serial", 0))
+            obj, _ = ReportCounterGlobal.objects.get_or_create(id=1)
+            obj.last_serial = value
+            obj.save()
+            return Response({"status": "ok"})
+        if kind == "report_year":
+            year = int(request.data.get("year"))
+            if year > 2025:
+                return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
+            value = int(request.data.get("last_serial", 0))
+            obj, _ = ReportCounterYearAll.objects.get_or_create(year=year)
+            obj.last_serial = value
+            obj.save()
+            return Response({"status": "ok"})
+        if kind == "document":
+            year = int(request.data.get("year"))
+            if year > 2025:
+                return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
+            doc_type = request.data.get("doc_type")
+            value = int(request.data.get("last_serial", 0))
+            obj, _ = DocumentCounter.objects.get_or_create(year=year, doc_type=doc_type)
+            obj.last_serial = value
+            obj.save()
+            return Response({"status": "ok"})
+        return Response({"error": "Geçersiz istek."}, status=400)
+
+
+@api_view(["GET"])
+def backup(request):
+    user = _actor(request)
+    if not user or not user.is_staff:
+        raise PermissionDenied("Sadece admin yedek alabilir.")
+    os.makedirs("/app/backups", exist_ok=True)
+    ts = timezone.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"/app/backups/backup_{ts}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        call_command("dumpdata", exclude=["core.file"], stdout=f)
+    return FileResponse(open(filename, "rb"), as_attachment=True, filename=f"backup_{ts}.json")
+
+

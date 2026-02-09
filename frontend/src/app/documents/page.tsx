@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch, apiUpload, me } from "@/lib/api";
+import { apiFetch, apiUpload, me, getSettings } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,13 +35,33 @@ type Customer = {
   tax_no: string;
 };
 
+function FilePicker({
+  label,
+  onChange
+}: {
+  label: string;
+  onChange: (file: File | null) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
+      <span>{label}</span>
+      <span className="text-xs text-terracotta">Seç</span>
+      <input
+        type="file"
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
+    </label>
+  );
+}
+
 const DOC_TYPES = ["GLE", "GDE", "KIT", "DGR"];
 const DELIVERY = [
   { value: "KARGO", label: "Kargo" },
   { value: "EPOSTA", label: "E-posta" },
   { value: "ELDEN", label: "Elden" },
   { value: "EBYS", label: "EBYS" },
-  { value: "DIGER", label: "Diger" }
+  { value: "DIGER", label: "Diğer" }
 ];
 
 export default function DocumentsPage() {
@@ -51,7 +71,8 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState("");
   const [docType, setDocType] = useState("GLE");
-  const [year, setYear] = useState("2026");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [workingYear, setWorkingYear] = useState<number | null>(null);
   const [receivedDate, setReceivedDate] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
   const [sender, setSender] = useState("");
@@ -67,7 +88,11 @@ export default function DocumentsPage() {
   const [deliveryEbysId, setDeliveryEbysId] = useState("");
   const [deliveryEbysDate, setDeliveryEbysDate] = useState("");
   const [deliveryOtherDesc, setDeliveryOtherDesc] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [file1, setFile1] = useState<File | null>(null);
+  const [file2, setFile2] = useState<File | null>(null);
+  const [file3, setFile3] = useState<File | null>(null);
+  const [manualSerial, setManualSerial] = useState("");
+  const [manualDocNo, setManualDocNo] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [isStaff, setIsStaff] = useState(false);
@@ -80,14 +105,19 @@ export default function DocumentsPage() {
   async function load() {
     setLoading(true);
     try {
-      const [docs, custs, meInfo] = await Promise.all([
+      const [docs, custs, meInfo, settings] = await Promise.all([
         apiFetch<DocumentRow[]>("/api/documents/"),
         apiFetch<Customer[]>("/api/customers/"),
-        me()
+        me(),
+        getSettings().catch(() => null)
       ]);
       setItems(docs);
       setCustomers(custs);
       setIsStaff(Boolean(meInfo?.is_staff));
+      if (settings) {
+        setWorkingYear(settings.working_year);
+        setYear(String(settings.working_year));
+      }
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -108,6 +138,8 @@ export default function DocumentsPage() {
     customers.forEach((c) => m.set(c.id, c));
     return m;
   }, [customers]);
+
+  const manualAllowed = isStaff && year !== "" && Number(year) <= 2025;
 
   const filtered = useMemo(() => {
     let rows = items;
@@ -158,19 +190,28 @@ export default function DocumentsPage() {
           delivery_email: deliveryEmail || null,
           delivery_ebys_id: deliveryEbysId || null,
           delivery_ebys_date: deliveryEbysDate || null,
-          delivery_other_desc: deliveryOtherDesc || null
+          delivery_other_desc: deliveryOtherDesc || null,
+          ...(manualAllowed && manualSerial && manualDocNo
+            ? { manual_serial: Number(manualSerial), manual_doc_no: manualDocNo }
+            : {})
         })
       });
 
-      if (file) {
+      const filesToUpload = [file1, file2, file3].filter(Boolean) as File[];
+      for (const f of filesToUpload) {
         const fd = new FormData();
-        fd.append("file", file);
+        fd.append("file", f);
         fd.append("document", String(doc.id));
         await apiUpload("/api/files/upload/", fd);
-        setFile(null);
       }
+      setFile1(null);
+      setFile2(null);
+      setFile3(null);
+      setManualSerial("");
+      setManualDocNo("");
 
       setCustomerId("");
+      setYear(String(workingYear ?? new Date().getFullYear()));
       setReferenceNo("");
       setSender("");
       setRecipient("");
@@ -210,7 +251,7 @@ export default function DocumentsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Evraklar</h1>
-        <p className="text-ink/60">Gelen/giden evrak kayitlari.</p>
+        <p className="text-ink/60">Gelen/giden evrak kayıtları.</p>
       </div>
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
@@ -219,7 +260,7 @@ export default function DocumentsPage() {
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
-          <option value="">Musteri sec</option>
+          <option value="">Müşteri seç</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
@@ -237,19 +278,19 @@ export default function DocumentsPage() {
             </option>
           ))}
         </select>
-        <Input placeholder="Yil" value={year} onChange={(e) => setYear(e.target.value)} />
+        <Input placeholder="Yıl" value={year} onChange={(e) => setYear(e.target.value)} />
 
         <Input type="date" placeholder="Tarih" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
-        <Input placeholder="Harici sayi" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-        <Input placeholder="Gonderen" value={sender} onChange={(e) => setSender(e.target.value)} />
-        <Input placeholder="Alici" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+        <Input placeholder="Harici sayı" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
+        <Input placeholder="Gönderen" value={sender} onChange={(e) => setSender(e.target.value)} />
+        <Input placeholder="Alıcı" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
         <Input placeholder="Konu" value={subject} onChange={(e) => setSubject(e.target.value)} />
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
           value={deliveryMethod}
           onChange={(e) => setDeliveryMethod(e.target.value)}
         >
-          <option value="">Teslim yontemi</option>
+          <option value="">Teslim yöntemi</option>
           {DELIVERY.map((d) => (
             <option key={d.value} value={d.value}>
               {d.label}
@@ -258,7 +299,7 @@ export default function DocumentsPage() {
         </select>
         {deliveryMethod === "KARGO" ? (
           <>
-            <Input placeholder="Kargo adi" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
+            <Input placeholder="Kargo adı" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
             <Input placeholder="Takip no" value={deliveryKargoTracking} onChange={(e) => setDeliveryKargoTracking(e.target.value)} />
           </>
         ) : null}
@@ -280,19 +321,41 @@ export default function DocumentsPage() {
         {deliveryMethod === "DIGER" ? (
           <textarea
             className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
-            placeholder="Aciklama"
+            placeholder="Açıklama"
             value={deliveryOtherDesc}
             onChange={(e) => setDeliveryOtherDesc(e.target.value)}
           />
         ) : null}
         <textarea
           className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm md:col-span-2"
-          placeholder="Aciklama (genel)"
+          placeholder="Açıklama (genel)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
 
-        <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        <div className="grid gap-2 md:col-span-2 md:grid-cols-3">
+          <FilePicker label="Ek 1" onChange={setFile1} />
+          <FilePicker label="Ek 2" onChange={setFile2} />
+          <FilePicker label="Ek 3" onChange={setFile3} />
+        </div>
+
+        {manualAllowed ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm md:col-span-3">
+            <div className="font-medium text-ink/80">2024-2025 için manuel numara</div>
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <Input
+                placeholder="Manuel seri (ör. 12)"
+                value={manualSerial}
+                onChange={(e) => setManualSerial(e.target.value)}
+              />
+              <Input
+                placeholder="Manuel evrak no (ör. GLE-2024-012)"
+                value={manualDocNo}
+                onChange={(e) => setManualDocNo(e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <Button type="submit" disabled={!token || saving || !customerId || !year || !receivedDate}>
           {saving ? "Kaydediliyor..." : "Evrak Ekle"}
@@ -307,7 +370,7 @@ export default function DocumentsPage() {
           value={filterCustomer}
           onChange={(e) => setFilterCustomer(e.target.value)}
         >
-          <option value="">Musteri (tum)</option>
+          <option value="">Müşteri (tüm)</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -319,7 +382,7 @@ export default function DocumentsPage() {
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
         >
-          <option value="">Evrak turu (tum)</option>
+          <option value="">Evrak türü (tüm)</option>
           {DOC_TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
@@ -333,11 +396,11 @@ export default function DocumentsPage() {
         >
           <option value="date_desc">Tarih (yeni)</option>
           <option value="date_asc">Tarih (eski)</option>
-          <option value="customer_asc">Musteri A-Z</option>
+          <option value="customer_asc">Müşteri A-Z</option>
         </select>
       </div>
 
-      {loading ? <div>Yukleniyor...</div> : null}
+      {loading ? <div>Yükleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
       {!loading && !error ? (
@@ -347,10 +410,10 @@ export default function DocumentsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Tarih</th>
                 <th className="px-4 py-3 font-medium">Evrak No</th>
-                <th className="px-4 py-3 font-medium">Musteri</th>
+                <th className="px-4 py-3 font-medium">Müşteri</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
-                <th className="px-4 py-3 font-medium">Duzenle</th>
+                <th className="px-4 py-3 font-medium">Düzenle</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
             </thead>
@@ -363,12 +426,12 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3">{item.subject}</td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/documents/${item.id}`}>
-                      Ac
+                      Aç
                     </Link>
                   </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/documents/${item.id}?edit=1`}>
-                      Duzenle
+                      Düzenle
                     </Link>
                   </td>
                   {isStaff ? (
@@ -385,3 +448,4 @@ export default function DocumentsPage() {
     </div>
   );
 }
+

@@ -24,6 +24,26 @@ type FileRow = {
   url: string;
 };
 
+function FilePicker({
+  label,
+  onChange
+}: {
+  label: string;
+  onChange: (file: File | null) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
+      <span>{label}</span>
+      <span className="text-xs text-terracotta">Seç</span>
+      <input
+        type="file"
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
+    </label>
+  );
+}
+
 export default function CustomersPage() {
   const [items, setItems] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +150,7 @@ export default function CustomersPage() {
         <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <Input placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input placeholder="Yetkili kisi" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-        <Input type="file" onChange={(e) => setContractFile(e.target.files?.[0] || null)} />
+        <FilePicker label="Sözleşme dosyası (opsiyonel)" onChange={setContractFile} />
         <Button type="submit" disabled={!token || saving || !name || !taxNo}>
           {saving ? "Kaydediliyor..." : "Müşteri Ekle"}
         </Button>
