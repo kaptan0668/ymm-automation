@@ -17,6 +17,7 @@ type ContractRow = {
   period_end_year?: number;
   filename?: string;
   file_url?: string;
+  signed_url?: string;
   customer: number;
 };
 
@@ -108,8 +109,8 @@ export default function ContractDetailPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <h2 className="text-xl font-semibold">Dosya</h2>
         <div className="mt-4">
-          {contract.file_url ? (
-            <a className="text-terracotta" href={contract.file_url} target="_blank" rel="noreferrer">
+          {contract.file_url || contract.signed_url ? (
+            <a className="text-terracotta" href={contract.signed_url ?? contract.file_url} target="_blank" rel="noreferrer">
               {contract.filename || "Sözleşme dosyası"}
             </a>
           ) : (
@@ -120,3 +121,4 @@ export default function ContractDetailPage() {
     </div>
   );
 }
+

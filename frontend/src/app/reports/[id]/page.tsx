@@ -36,6 +36,7 @@ type FileRow = {
   id: number;
   filename: string;
   url: string;
+  signed_url?: string;
 };
 
 function FilePicker({
@@ -333,7 +334,12 @@ export default function ReportDetailPage() {
           ) : (
             files.map((f) => (
               <div key={f.id} className="rounded-xl border border-ink/10 bg-white p-4">
-                <a className="text-sm font-semibold text-terracotta" href={f.url} target="_blank" rel="noreferrer">
+                <a
+                  className="text-sm font-semibold text-terracotta"
+                  href={f.signed_url ?? f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {f.filename}
                 </a>
                 <div className="mt-2 flex items-center justify-between text-xs text-ink/50">

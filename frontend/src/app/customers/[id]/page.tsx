@@ -22,6 +22,7 @@ type FileRow = {
   id: number;
   filename: string;
   url: string;
+  signed_url?: string;
 };
 
 type DocumentRow = {
@@ -50,6 +51,7 @@ type ContractRow = {
   period_end_month?: number;
   period_end_year?: number;
   file_url?: string;
+  signed_url?: string;
 };
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
@@ -310,8 +312,13 @@ export default function CustomerCardPage() {
                 <div key={c.id} className="rounded-xl border border-ink/10 bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-ink/60">{c.contract_date || "-"}</div>
-                    {c.file_url ? (
-                      <a className="text-sm text-terracotta" href={c.file_url} target="_blank" rel="noreferrer">
+                    {c.file_url || c.signed_url ? (
+                      <a
+                        className="text-sm text-terracotta"
+                        href={c.signed_url ?? c.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         Sözleşmeyi aç
                       </a>
                     ) : null}
@@ -351,7 +358,13 @@ export default function CustomerCardPage() {
                   <div className="mt-1 text-sm text-ink/60">{d.subject || "Konu yok"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {(d.files || []).map((f) => (
-                      <a key={f.id} className="text-xs text-terracotta" href={f.url} target="_blank" rel="noreferrer">
+                      <a
+                        key={f.id}
+                        className="text-xs text-terracotta"
+                        href={f.signed_url ?? f.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         {f.filename}
                       </a>
                     ))}
@@ -387,7 +400,13 @@ export default function CustomerCardPage() {
                   <div className="mt-1 text-sm text-ink/60">{r.subject || "Konu yok"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {(r.files || []).map((f) => (
-                      <a key={f.id} className="text-xs text-terracotta" href={f.url} target="_blank" rel="noreferrer">
+                      <a
+                        key={f.id}
+                        className="text-xs text-terracotta"
+                        href={f.signed_url ?? f.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         {f.filename}
                       </a>
                     ))}
@@ -424,7 +443,7 @@ export default function CustomerCardPage() {
               ) : (
                 files.map((f) => (
                   <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
-                    <a className="text-sm text-terracotta" href={f.url} target="_blank" rel="noreferrer">
+                    <a className="text-sm text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
                       {f.filename}
                     </a>
                     {isStaff ? (

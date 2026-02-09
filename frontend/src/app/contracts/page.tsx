@@ -18,6 +18,7 @@ type ContractRow = {
   period_end_year?: number;
   customer: number;
   file_url?: string;
+  signed_url?: string;
 };
 
 type Customer = {
