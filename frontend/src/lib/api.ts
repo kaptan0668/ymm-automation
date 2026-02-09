@@ -42,9 +42,11 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   const base = resolveApiBase();
+  const method = (options.method || "GET").toUpperCase();
   const res = await fetch(`${base}${path}`, {
     ...options,
-    headers
+    headers,
+    cache: options.cache || (method === "GET" ? "no-store" : undefined)
   });
 
   if (!res.ok) {

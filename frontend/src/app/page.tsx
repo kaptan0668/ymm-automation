@@ -27,8 +27,10 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const ts = Date.now();
       const [custs, docs, reps] = await Promise.all([
@@ -39,6 +41,7 @@ export default function Dashboard() {
       setCustomers(custs);
       setDocuments(docs);
       setReports(reps);
+      setLastUpdated(new Date());
     } finally {
       setLoading(false);
     }
@@ -155,6 +158,9 @@ export default function Dashboard() {
               <Button variant="outline" size="sm" onClick={load}>
                 Yenile
               </Button>
+            </div>
+            <div className="mt-1 text-xs text-ink/50">
+              Son güncelleme: {lastUpdated ? lastUpdated.toLocaleTimeString("tr-TR") : "—"}
             </div>
           </CardHeader>
           <CardContent>
