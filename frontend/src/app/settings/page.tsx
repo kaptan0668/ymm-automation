@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { changePassword, resolveAdminBase, getSettings, updateSettings, updateCounter, me, resolveApiBase } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { clearTokens } from "@/lib/auth";
 
 export default function SettingsPage() {
@@ -105,6 +106,35 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleBackupDownload() {
+    setAdminNotice(null);
+    if (!isStaff) return;
+    try {
+      const token = getAccessToken();
+      const base = resolveApiBase();
+      const res = await fetch(`${base}/api/admin/backup/`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "backup.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setAdminNotice("Yedek indirildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setAdminNotice(`Yedek alınamadı: ${msg}`);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -192,9 +222,9 @@ export default function SettingsPage() {
       {isStaff ? (
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
           <div className="text-sm text-ink/60">Yedekleme (ek dosyalar dahil değil)</div>
-          <a className="text-terracotta" href={`${resolveApiBase()}/api/admin/backup/`}>
+          <Button variant="outline" onClick={handleBackupDownload}>
             Yedek indir (JSON)
-          </a>
+          </Button>
         </div>
       ) : null}
 
