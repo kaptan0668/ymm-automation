@@ -30,7 +30,7 @@ export default function ContractsPage() {
   const [items, setItems] = useState<ContractRow[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadıng, setLoadıng] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [customerId, setCustomerId] = useState("");
   const [contractNo, setContractNo] = useState("");
@@ -45,7 +45,7 @@ export default function ContractsPage() {
   const [isStaff, setIsStaff] = useState(false);
 
   async function load() {
-    setLoading(true);
+    setLoadıng(true);
     try {
       const [contracts, custs, meInfo] = await Promise.all([
         apiFetch<ContractRow[]>("/api/contracts/"),
@@ -60,7 +60,7 @@ export default function ContractsPage() {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setError(msg);
     } finally {
-      setLoading(false);
+      setLoadıng(false);
     }
   }
 
@@ -114,17 +114,17 @@ export default function ContractsPage() {
       setPeriodEndMonth("");
       setPeriodEndYear("");
       await load();
-      setNotice("S�zlesme y�klendi ve kart olusturuldu.");
+      setNotice("Sözleşme yüklendi ve kart oluşturuldu.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNotice(`Y�klenemedi: ${msg}`);
+      setNotice(`Yüklenemedi: ${msg}`);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("S�zlesme silinsin mi?")) return;
+    if (!confirm("Sözleşme silinsin mi?")) return;
     try {
       await apiFetch(`/api/contracts/${id}/`, { method: "DELETE" });
       await load();
@@ -146,8 +146,8 @@ export default function ContractsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold">S�zlesmeler</h1>
-        <p className="text-ink/60">S�zlesme listesi ve otomatik kartlar.</p>
+        <h1 className="text-3xl font-semibold">Sözleşmeler</h1>
+        <p className="text-ink/60">Sözleşme listesi ve otomatik kartlar.</p>
       </div>
 
       <form onSubmit={handleUpload} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
@@ -156,7 +156,7 @@ export default function ContractsPage() {
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
-          <option value="">M�steri se�</option>
+          <option value="">Müşteri seç</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
@@ -164,16 +164,16 @@ export default function ContractsPage() {
           ))}
         </select>
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <Input placeholder="S�zlesme no (opsiyonel)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
-        <Input type="date" placeholder="S�zlesme tarihi (opsiyonel)" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
-        <Input placeholder="S�zlesme t�r� (opsiyonel)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
+        <Input placeholder="Sözleşme no (opsiyonel)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
+        <Input type="date" placeholder="Sözleşme tarihi (opsiyonel)" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
+        <Input placeholder="Sözleşme türü (opsiyonel)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
         <div className="flex gap-2">
           <select
             className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
             value={periodStartMonth}
             onChange={(e) => setPeriodStartMonth(e.target.value)}
           >
-            <option value="">D�nem baslangi� ay</option>
+            <option value="">Dönem başlangıç ay</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -185,7 +185,7 @@ export default function ContractsPage() {
             value={periodStartYear}
             onChange={(e) => setPeriodStartYear(e.target.value)}
           >
-            <option value="">Baslangi� yil</option>
+            <option value="">Başlangıç yil</option>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -199,7 +199,7 @@ export default function ContractsPage() {
             value={periodEndMonth}
             onChange={(e) => setPeriodEndMonth(e.target.value)}
           >
-            <option value="">D�nem bitis ay</option>
+            <option value="">Dönem bitiş ay</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -220,24 +220,24 @@ export default function ContractsPage() {
           </select>
         </div>
         <Button type="submit" disabled={!token || saving || !file || !customerId}>
-          {saving ? "Y�kleniyor..." : "S�zlesme Y�kle"}
+          {saving ? "Yükleniyor..." : "Sözleşme Yükle"}
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      {loading ? <div>Y�kleniyor...</div> : null}
+      {loadıng ? <div>Yükleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
-      {!loading && !error ? (
+      {!loadıng && !error ? (
         <div className="overflow-hidden rounded-lg border border-ink/10 bg-white">
           <table className="w-full text-sm">
             <thead className="bg-haze text-left">
               <tr>
-                <th className="px-4 py-3 font-medium">S�zlesme Tarihi</th>
-                <th className="px-4 py-3 font-medium">S�zlesme No</th>
-                <th className="px-4 py-3 font-medium">M�steri</th>
-                <th className="px-4 py-3 font-medium">D�nemi</th>
-                <th className="px-4 py-3 font-medium">S�zlesme T�r�</th>
+                <th className="px-4 py-3 font-medium">Sözleşme Tarihi</th>
+                <th className="px-4 py-3 font-medium">Sözleşme No</th>
+                <th className="px-4 py-3 font-medium">Müşteri</th>
+                <th className="px-4 py-3 font-medium">Dönemi</th>
+                <th className="px-4 py-3 font-medium">Sözleşme Türü</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
@@ -252,7 +252,7 @@ export default function ContractsPage() {
                   <td className="px-4 py-3">{item.contract_type || "-"}</td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/contracts/${item.id}`}>
-                      Karti G�r
+                      Kartı Gör
                     </Link>
                   </td>
                   {isStaff ? (
@@ -269,4 +269,6 @@ export default function ContractsPage() {
     </div>
   );
 }
+
+
 
