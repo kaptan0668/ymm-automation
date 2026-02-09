@@ -20,8 +20,8 @@ from .models import (
 
 
 
-def _s3_client():
-    endpoint = os.environ.get("MINIO_ENDPOINT", "localhost:9000")
+def _s3_client(endpoint_override: str | None = None):
+    endpoint = endpoint_override or os.environ.get("MINIO_ENDPOINT", "localhost:9000")
     access_key = os.environ.get("MINIO_ACCESS_KEY", "minio")
     secret_key = os.environ.get("MINIO_SECRET_KEY", "minio123")
     secure = os.environ.get("MINIO_SECURE", "false").lower() == "true"
@@ -55,7 +55,8 @@ def _presign(url: str) -> str | None:
     if not key:
         return None
     expires = int(os.environ.get("MINIO_PRESIGN_EXPIRES", "3600"))
-    client = _s3_client()
+    public_endpoint = os.environ.get("MINIO_PUBLIC_ENDPOINT")
+    client = _s3_client(endpoint_override=public_endpoint)
     return client.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
