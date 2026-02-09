@@ -186,7 +186,7 @@ export default function ReportsPage() {
       rows = [...rows].sort((a, b) => (customerMap.get(a.customer)?.name || "").localeCompare(customerMap.get(b.customer)?.name || ""));
     }
     return rows;
-  }, [items, filterCustomer, filterType, filterText, sortBy, customerMap]);
+  }, [items, filterCustomer, filterType, filterStatus, filterText, sortBy, customerMap]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

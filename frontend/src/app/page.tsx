@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
@@ -28,24 +28,32 @@ export default function Dashboard() {
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const ts = Date.now();
-        const [custs, docs, reps] = await Promise.all([
-          apiFetch<Customer[]>(`/api/customers/?_ts=${ts}`),
-          apiFetch<DocumentRow[]>(`/api/documents/?_ts=${ts}`),
-          apiFetch<ReportRow[]>(`/api/reports/?_ts=${ts}`)
-        ]);
-        setCustomers(custs);
-        setDocuments(docs);
-        setReports(reps);
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async () => {
+    try {
+      const ts = Date.now();
+      const [custs, docs, reps] = await Promise.all([
+        apiFetch<Customer[]>(`/api/customers/?_ts=${ts}`),
+        apiFetch<DocumentRow[]>(`/api/documents/?_ts=${ts}`),
+        apiFetch<ReportRow[]>(`/api/reports/?_ts=${ts}`)
+      ]);
+      setCustomers(custs);
+      setDocuments(docs);
+      setReports(reps);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 30000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load]);
 
   const openDocs = documents.filter((d) => d.status !== "DONE").length;
   const openReports = reports.filter((r) => r.status !== "DONE").length;
@@ -142,7 +150,12 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <div className="text-sm text-ink/60">Son Hareketler</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-ink/60">Son Hareketler</div>
+              <Button variant="outline" size="sm" onClick={load}>
+                Yenile
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
