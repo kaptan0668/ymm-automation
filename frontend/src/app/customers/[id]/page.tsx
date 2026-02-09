@@ -107,6 +107,7 @@ export default function CustomerCardPage() {
   const [showDocs, setShowDocs] = useState(true);
   const [showReports, setShowReports] = useState(true);
   const [showContracts, setShowContracts] = useState(true);
+  const [showOtherFiles, setShowOtherFiles] = useState(true);
 
   const [file1, setFile1] = useState<File | null>(null);
   const [file2, setFile2] = useState<File | null>(null);
@@ -250,7 +251,7 @@ export default function CustomerCardPage() {
       </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
             <div className="text-xs text-ink/60">Evrak</div>
             <div className="text-2xl font-semibold">{docCount}</div>
@@ -266,6 +267,10 @@ export default function CustomerCardPage() {
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
             <div className="text-xs text-ink/60">Sözleşme</div>
             <div className="text-2xl font-semibold">{contractCount}</div>
+          </div>
+          <div className="rounded-xl border border-ink/10 bg-haze p-4">
+            <div className="text-xs text-ink/60">Vergi No</div>
+            <div className="text-base font-semibold">{customer.tax_no}</div>
           </div>
         </div>
       </div>
@@ -395,34 +400,43 @@ export default function CustomerCardPage() {
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-ink/60">Müşteriye ait bağımsız dosyalar</div>
-          <Button variant="outline" onClick={handleUploadCustomerFiles}>
-            Dosya Yükle
-          </Button>
+          <h2 className="text-xl font-semibold">Diğer Dosyalar</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowOtherFiles((v) => !v)}>
+              {showOtherFiles ? "Gizle" : "Göster"}
+            </Button>
+            <Button variant="outline" onClick={handleUploadCustomerFiles}>
+              Dosya Yükle
+            </Button>
+          </div>
         </div>
-        <div className="grid gap-2 md:grid-cols-3">
-          <FilePicker label="Dosya 1" onChange={setFile1} />
-          <FilePicker label="Dosya 2" onChange={setFile2} />
-          <FilePicker label="Dosya 3" onChange={setFile3} />
-        </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {files.length === 0 ? (
-            <EmptyState title="Dosya yok" subtitle="Müşteriye ait dosya bulunamadı." />
-          ) : (
-            files.map((f) => (
-              <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
-                <a className="text-sm text-terracotta" href={f.url} target="_blank" rel="noreferrer">
-                  {f.filename}
-                </a>
-                {isStaff ? (
-                  <button className="text-xs text-red-600" onClick={() => handleDeleteFile(f.id)}>
-                    Sil
-                  </button>
-                ) : null}
-              </div>
-            ))
-          )}
-        </div>
+        {showOtherFiles ? (
+          <>
+            <div className="grid gap-2 md:grid-cols-3">
+              <FilePicker label="Dosya 1" onChange={setFile1} />
+              <FilePicker label="Dosya 2" onChange={setFile2} />
+              <FilePicker label="Dosya 3" onChange={setFile3} />
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {files.length === 0 ? (
+                <EmptyState title="Dosya yok" subtitle="Müşteriye ait dosya bulunamadı." />
+              ) : (
+                files.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
+                    <a className="text-sm text-terracotta" href={f.url} target="_blank" rel="noreferrer">
+                      {f.filename}
+                    </a>
+                    {isStaff ? (
+                      <button className="text-xs text-red-600" onClick={() => handleDeleteFile(f.id)}>
+                        Sil
+                      </button>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
