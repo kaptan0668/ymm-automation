@@ -382,13 +382,13 @@ export default function DocumentsPage() {
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-        <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
-          <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
-          <select
-            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-            value={filterCustomer}
-            onChange={(e) => setFilterCustomer(e.target.value)}
-          >
+      <div className="grid gap-2 rounded-lg border border-ink/10 bg-white p-3 md:grid-cols-5">
+        <Input className="h-9 text-xs" placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+        <select
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
+          value={filterCustomer}
+          onChange={(e) => setFilterCustomer(e.target.value)}
+        >
           <option value="">Müşteri (tüm)</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
@@ -396,11 +396,11 @@ export default function DocumentsPage() {
             </option>
           ))}
         </select>
-          <select
-            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
+        <select
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
             <option value="">Evrak türü (tüm)</option>
             {DOC_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -408,20 +408,20 @@ export default function DocumentsPage() {
               </option>
             ))}
           </select>
-          <select
-            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
+        <select
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
             <option value="">Durum (tüm)</option>
             <option value="OPEN">Açık</option>
             <option value="DONE">Tamamlandı</option>
           </select>
-          <select
-            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
+        <select
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
             <option value="date_desc">Tarih (yeni)</option>
             <option value="date_asc">Tarih (eski)</option>
             <option value="customer_asc">Müşteri A-Z</option>
@@ -448,7 +448,14 @@ export default function DocumentsPage() {
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="border-t border-ink/10">
+                <tr
+                  key={item.id}
+                  className={
+                    item.status === "DONE"
+                      ? "border-t border-emerald-100 bg-emerald-50/40"
+                      : "border-t border-ink/10"
+                  }
+                >
                   <td className="px-4 py-3">{item.received_date}</td>
                   <td className="px-4 py-3">{item.doc_no}</td>
                   <td className="px-4 py-3">{customerMap.get(item.customer)?.name}</td>

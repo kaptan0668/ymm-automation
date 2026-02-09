@@ -353,7 +353,7 @@ export default function CustomerCardPage() {
                   key={d.id}
                   className={
                     d.status === "DONE"
-                      ? "rounded-xl border border-emerald-100 bg-emerald-50/40 p-4"
+                      ? "rounded-xl border border-emerald-200 bg-emerald-100/60 p-4"
                       : "rounded-xl border border-ink/10 bg-white p-4"
                   }
                 >
@@ -414,7 +414,7 @@ export default function CustomerCardPage() {
                   key={r.id}
                   className={
                     r.status === "DONE"
-                      ? "rounded-xl border border-emerald-100 bg-emerald-50/40 p-4"
+                      ? "rounded-xl border border-emerald-200 bg-emerald-100/60 p-4"
                       : "rounded-xl border border-ink/10 bg-white p-4"
                   }
                 >

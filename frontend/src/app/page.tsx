@@ -31,10 +31,11 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       try {
+        const ts = Date.now();
         const [custs, docs, reps] = await Promise.all([
-          apiFetch<Customer[]>("/api/customers/"),
-          apiFetch<DocumentRow[]>("/api/documents/"),
-          apiFetch<ReportRow[]>("/api/reports/")
+          apiFetch<Customer[]>(`/api/customers/?_ts=${ts}`),
+          apiFetch<DocumentRow[]>(`/api/documents/?_ts=${ts}`),
+          apiFetch<ReportRow[]>(`/api/reports/?_ts=${ts}`)
         ]);
         setCustomers(custs);
         setDocuments(docs);

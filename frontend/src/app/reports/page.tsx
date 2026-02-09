@@ -485,10 +485,10 @@ export default function ReportsPage() {
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
-      <div className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-4">
-        <Input placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
+      <div className="grid gap-2 rounded-lg border border-ink/10 bg-white p-3 md:grid-cols-5">
+        <Input className="h-9 text-xs" placeholder="Arama" value={filterText} onChange={(e) => setFilterText(e.target.value)} />
         <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
           value={filterCustomer}
           onChange={(e) => setFilterCustomer(e.target.value)}
         >
@@ -500,7 +500,7 @@ export default function ReportsPage() {
           ))}
         </select>
         <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
         >
@@ -512,7 +512,7 @@ export default function ReportsPage() {
           ))}
         </select>
         <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
         >
@@ -521,7 +521,7 @@ export default function ReportsPage() {
           <option value="DONE">Tamamlandı</option>
         </select>
         <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          className="h-9 rounded-md border border-ink/20 bg-white px-3 text-xs"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
         >
@@ -552,7 +552,14 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="border-t border-ink/10">
+                <tr
+                  key={item.id}
+                  className={
+                    item.status === "DONE"
+                      ? "border-t border-emerald-100 bg-emerald-50/40"
+                      : "border-t border-ink/10"
+                  }
+                >
                   {(() => {
                     const period =
                       item.period_start_month && item.period_start_year && item.period_end_month && item.period_end_year
