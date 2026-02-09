@@ -3,6 +3,7 @@
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
 
 permissions:
   packages: write
@@ -14,6 +15,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Compute Tags
+        id: meta
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "tags=ghcr.io/${GITHUB_ACTOR}/ymm-frontend:latest,ghcr.io/${GITHUB_ACTOR}/ymm-frontend:${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          else
+            short_sha="${GITHUB_SHA::7}"
+            echo "tags=ghcr.io/${GITHUB_ACTOR}/ymm-frontend:latest,ghcr.io/${GITHUB_ACTOR}/ymm-frontend:${short_sha}" >> $GITHUB_OUTPUT
+          fi
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -25,4 +35,4 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.actor }}/ymm-frontend:latest
+          tags: ${{ steps.meta.outputs.tags }}
