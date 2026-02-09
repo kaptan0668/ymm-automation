@@ -40,6 +40,18 @@ type ReportRow = {
   files?: FileRow[];
 };
 
+type ContractRow = {
+  id: number;
+  contract_no?: string;
+  contract_date?: string;
+  contract_type?: string;
+  period_start_month?: number;
+  period_start_year?: number;
+  period_end_month?: number;
+  period_end_year?: number;
+  file_url?: string;
+};
+
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-xl border border-ink/10 bg-white/80 p-6 text-sm text-ink/60">
@@ -77,6 +89,7 @@ export default function CustomerCardPage() {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,6 +106,7 @@ export default function CustomerCardPage() {
 
   const [showDocs, setShowDocs] = useState(true);
   const [showReports, setShowReports] = useState(true);
+  const [showContracts, setShowContracts] = useState(true);
 
   const [file1, setFile1] = useState<File | null>(null);
   const [file2, setFile2] = useState<File | null>(null);
@@ -101,17 +115,19 @@ export default function CustomerCardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [c, d, r, f, meInfo] = await Promise.all([
+        const [c, d, r, f, contractItems, meInfo] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${id}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?customer=${id}`),
           apiFetch<ReportRow[]>(`/api/reports/?customer=${id}`),
           apiFetch<FileRow[]>(`/api/files/?customer=${id}`),
+          apiFetch<ContractRow[]>(`/api/contracts/?customer=${id}`),
           me()
         ]);
         setCustomer(c);
         setDocs(d);
         setReports(r);
         setFiles(f);
+        setContracts(contractItems);
         setIsStaff(Boolean(meInfo?.is_staff));
         setName(c.name || "");
         setTaxNo(c.tax_no || "");
@@ -193,6 +209,16 @@ export default function CustomerCardPage() {
   const docCount = docs.length;
   const reportCount = reports.length;
   const fileCount = files.length;
+  const contractCount = contracts.length;
+
+  function formatPeriod(item: ContractRow) {
+    if (item.period_start_month && item.period_start_year && item.period_end_month && item.period_end_year) {
+      const s = `${String(item.period_start_month).padStart(2, "0")}/${item.period_start_year}`;
+      const e = `${String(item.period_end_month).padStart(2, "0")}/${item.period_end_year}`;
+      return `${s}-${e}`;
+    }
+    return "-";
+  }
 
   return (
     <div className="space-y-6">
@@ -224,7 +250,7 @@ export default function CustomerCardPage() {
       </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
             <div className="text-xs text-ink/60">Evrak</div>
             <div className="text-2xl font-semibold">{docCount}</div>
@@ -236,6 +262,10 @@ export default function CustomerCardPage() {
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
             <div className="text-xs text-ink/60">Ek</div>
             <div className="text-2xl font-semibold">{fileCount}</div>
+          </div>
+          <div className="rounded-xl border border-ink/10 bg-haze p-4">
+            <div className="text-xs text-ink/60">Sözleşme</div>
+            <div className="text-2xl font-semibold">{contractCount}</div>
           </div>
         </div>
       </div>
@@ -257,6 +287,39 @@ export default function CustomerCardPage() {
           </Button>
         </form>
       ) : null}
+
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Sözleşmeler</h2>
+          <Button variant="outline" onClick={() => setShowContracts((v) => !v)}>
+            {showContracts ? "Gizle" : "Göster"}
+          </Button>
+        </div>
+        {showContracts ? (
+          contracts.length === 0 ? (
+            <EmptyState title="Sözleşme yok" subtitle="Bu müşteri için kayıtlı sözleşme bulunamadı." />
+          ) : (
+            <div className="space-y-3">
+              {contracts.map((c) => (
+                <div key={c.id} className="rounded-xl border border-ink/10 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-ink/60">{c.contract_date || "-"}</div>
+                    {c.file_url ? (
+                      <a className="text-sm text-terracotta" href={c.file_url} target="_blank" rel="noreferrer">
+                        Sözleşmeyi aç
+                      </a>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">{c.contract_no || "-"}</div>
+                  <div className="mt-1 text-sm text-ink/60">
+                    Tür: {c.contract_type || "-"} • Dönem: {formatPeriod(c)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : null}
+      </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
         <div className="flex items-center justify-between">
