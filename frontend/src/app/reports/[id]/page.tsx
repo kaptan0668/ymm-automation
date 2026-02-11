@@ -51,7 +51,7 @@ function FilePicker({
   return (
     <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
       <span>{label}</span>
-      <span className="text-xs text-terracotta">SeÃ§</span>
+      <span className="text-xs text-terracotta">Seç</span>
       <input
         type="file"
         className="hidden"
@@ -197,12 +197,12 @@ export default function ReportDetailPage() {
       setRep(updated);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNotice(`Durum gÃ¼ncellenemedi: ${msg}`);
+      setNotice(`Durum güncellenemedi: ${msg}`);
     }
   }
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!rep) return <div>YÃ¼kleniyor...</div>;
+  if (!rep) return <div>Yükleniyor...</div>;
 
   const periodText =
     rep.period_start_month && rep.period_start_year && rep.period_end_month && rep.period_end_year
@@ -216,27 +216,27 @@ export default function ReportDetailPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-widest text-ink/50">Rapor DetayÄ±</div>
+            <div className="text-xs uppercase tracking-widest text-ink/50">Rapor Detayı</div>
             <h1 className="text-3xl font-semibold">{rep.report_no}</h1>
             <div className="mt-1 text-sm text-ink/60">{rep.subject || "Konu yok"}</div>
             <div className="mt-2 text-sm">
               <span className={rep.status === "DONE" ? "text-emerald-700" : "text-ink/70"}>
-                {rep.status === "DONE" ? "TamamlandÄ±" : "AÃ§Ä±k"}
+                {rep.status === "DONE" ? "Tamamlandı" : "Açık"}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <BackButton />
             <Link className="text-sm text-terracotta print-hide" href={`/customers/${rep.customer}`}>
-              MÃ¼ÅŸteri KartÄ±
+              Müşteri Kartı
             </Link>
             <Button className="print-hide" variant="outline" onClick={handleToggleStatus}>
               {rep.status === "DONE" ? "Geri al" : "Tamamla"}
             </Button>
             <Button className="print-hide" variant="outline" onClick={() => setEditing((v) => !v)}>
-              {editing ? "Ä°ptal" : "DÃ¼zenle"}
+              {editing ? "İptal" : "Düzenle"}
             </Button>
-            <Button className="print-hide" onClick={() => window.print()}>YazdÄ±r</Button>
+            <Button className="print-hide" onClick={() => window.print()}>Yazdır</Button>
           </div>
         </div>
       </div>
@@ -247,8 +247,8 @@ export default function ReportDetailPage() {
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
             <div className="grid gap-3">
             <div><b>Tarih:</b> {rep.received_date || "-"}</div>
-            <div><b>TÃ¼r:</b> {rep.report_type}</div>
-            <div><b>DÃ¶nemi:</b> {periodText}</div>
+            <div><b>Tür:</b> {rep.report_type}</div>
+            <div><b>Dönemi:</b> {periodText}</div>
             <div><b>Teslim:</b> {rep.delivery_method || "-"}</div>
             {rep.delivery_method === "KARGO" ? (
               <>
@@ -272,39 +272,39 @@ export default function ReportDetailPage() {
               </>
             ) : null}
             {rep.delivery_method === "DIGER" ? (
-              <div><b>DiÄŸer:</b> {rep.delivery_other_desc || "-"}</div>
+              <div><b>Diğer:</b> {rep.delivery_other_desc || "-"}</div>
             ) : null}
           </div>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
           <div className="grid gap-3">
-            <div><b>AlÄ±cÄ±:</b> {rep.recipient || "-"}</div>
+            <div><b>Alıcı:</b> {rep.recipient || "-"}</div>
             <div><b>Konu:</b> {rep.subject || "-"}</div>
-            <div><b>AÃ§Ä±klama:</b> {rep.description || "-"}</div>
+            <div><b>Açıklama:</b> {rep.description || "-"}</div>
           </div>
         </div>
       </div>
 
       {editing ? (
         <form onSubmit={handleSave} className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
-          <div className="text-sm text-ink/60">DÃ¼zenlenebilir alanlar</div>
-          <Input placeholder="AlÄ±cÄ±" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+          <div className="text-sm text-ink/60">Düzenlenebilir alanlar</div>
+          <Input placeholder="Alıcı" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
           <Input placeholder="Konu" value={subject} onChange={(e) => setSubject(e.target.value)} />
           <select
             className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
             value={deliveryMethod}
             onChange={(e) => setDeliveryMethod(e.target.value)}
           >
-            <option value="">Teslim yÃ¶ntemi</option>
+            <option value="">Teslim yöntemi</option>
             <option value="KARGO">Kargo</option>
             <option value="EPOSTA">E-posta</option>
             <option value="ELDEN">Elden</option>
             <option value="EBYS">EBYS</option>
-            <option value="DIGER">DiÄŸer</option>
+            <option value="DIGER">Diğer</option>
           </select>
           {deliveryMethod === "KARGO" ? (
             <>
-              <Input placeholder="Kargo adÄ±" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
+              <Input placeholder="Kargo adı" value={deliveryKargoName} onChange={(e) => setDeliveryKargoName(e.target.value)} />
               <Input placeholder="Takip no" value={deliveryKargoTracking} onChange={(e) => setDeliveryKargoTracking(e.target.value)} />
             </>
           ) : null}
@@ -326,14 +326,14 @@ export default function ReportDetailPage() {
           {deliveryMethod === "DIGER" ? (
             <textarea
               className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
-              placeholder="AÃ§Ä±klama"
+              placeholder="Açıklama"
               value={deliveryOtherDesc}
               onChange={(e) => setDeliveryOtherDesc(e.target.value)}
             />
           ) : null}
           <textarea
             className="h-24 rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
-            placeholder="AÃ§Ä±klama (genel)"
+            placeholder="Açıklama (genel)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -346,7 +346,7 @@ export default function ReportDetailPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Ekler</h2>
-          <Button variant="outline" onClick={handleUploadFiles}>Dosya YÃ¼kle</Button>
+          <Button variant="outline" onClick={handleUploadFiles}>Dosya Yükle</Button>
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-3">
           <FilePicker label="Ek 1" onChange={setFile1} />
@@ -370,7 +370,7 @@ export default function ReportDetailPage() {
                   {f.filename}
                 </a>
                 <div className="mt-2 flex items-center justify-between text-xs text-ink/50">
-                  <span>Ä°ndir</span>
+                  <span>İndir</span>
                   {isStaff ? (
                     <button className="text-xs text-red-600" onClick={() => handleDeleteFile(f.id)}>
                       Sil

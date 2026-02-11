@@ -90,6 +90,10 @@ export default function SettingsPage() {
     setAdminNotice(null);
     if (!isStaff) return;
     try {
+      if (counterYear === "2026" && (reportYearCounter || docCounter)) {
+        setAdminNotice("2026 için sadece 'Rapor global kümülatif' girilebilir.");
+        return;
+      }
       if (reportGlobalCounter) {
         await updateCounter({ kind: "report_global", year: Number(counterYear), last_serial: Number(reportGlobalCounter) });
       }
@@ -190,7 +194,7 @@ export default function SettingsPage() {
 
       {isStaff ? (
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
-          <div className="text-sm text-ink/60">Numaratör yönetimi (2024-2025 için)</div>
+          <div className="text-sm text-ink/60">Numaratör yönetimi (2024-2025 + 2026 başlangıç kümülatif)</div>
           <div className="grid gap-3 md:grid-cols-3">
             <select
               className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -199,6 +203,7 @@ export default function SettingsPage() {
             >
               <option value="2024">2024</option>
               <option value="2025">2025</option>
+              <option value="2026">2026</option>
             </select>
             <Input placeholder="Rapor global kümülatif" value={reportGlobalCounter} onChange={(e) => setReportGlobalCounter(e.target.value)} />
             <Input placeholder="Rapor yıl sayacı" value={reportYearCounter} onChange={(e) => setReportYearCounter(e.target.value)} />

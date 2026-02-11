@@ -405,8 +405,10 @@ class CounterAdminViewSet(viewsets.ViewSet):
         kind = request.data.get("kind")
         if kind == "report_global":
             year = int(request.data.get("year") or 0)
-            if year and year > 2025:
-                return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
+            if year and year > 2026:
+                return Response({"error": "2027 ve sonrası için numaratör değiştirilemez."}, status=400)
+            if year == 2026 and Report.objects.filter(year=2026).exists():
+                return Response({"error": "2026 için kayıt başladıktan sonra kümülatif değiştirilemez."}, status=400)
             value = int(request.data.get("last_serial", 0))
             obj, _ = ReportCounterGlobal.objects.get_or_create(id=1)
             obj.last_serial = value

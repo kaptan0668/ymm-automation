@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type Customer = { id: number; name: string };
+type AppSettings = { working_year: number; reference_year: number };
 type DocumentRow = {
   id: number;
   doc_no: string;
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -33,14 +35,16 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const ts = Date.now();
-      const [custs, docs, reps] = await Promise.all([
+      const [custs, docs, reps, appSettings] = await Promise.all([
         apiFetch<Customer[]>(`/api/customers/?_ts=${ts}`),
         apiFetch<DocumentRow[]>(`/api/documents/?_ts=${ts}`),
-        apiFetch<ReportRow[]>(`/api/reports/?_ts=${ts}`)
+        apiFetch<ReportRow[]>(`/api/reports/?_ts=${ts}`),
+        apiFetch<AppSettings>(`/api/settings/?_ts=${ts}`).catch(() => null)
       ]);
       setCustomers(custs);
       setDocuments(docs);
       setReports(reps);
+      setSettings(appSettings);
       setLastUpdated(new Date());
     } finally {
       setLoading(false);
@@ -97,7 +101,7 @@ export default function Dashboard() {
             <div className="text-sm text-ink/60">Müşteriler</div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{loading ? "—" : customers.length}</div>
+            <div className="text-3xl font-semibold">{loading ? "-" : customers.length}</div>
             <div className="text-sm text-ink/50">Toplam kayıt</div>
           </CardContent>
         </Card>
@@ -106,8 +110,8 @@ export default function Dashboard() {
             <div className="text-sm text-ink/60">Açık Evrak</div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{loading ? "—" : openDocs}</div>
-            <div className="text-sm text-ink/50">Tamamlanan: {loading ? "—" : doneDocs}</div>
+            <div className="text-3xl font-semibold">{loading ? "-" : openDocs}</div>
+            <div className="text-sm text-ink/50">Tamamlanan: {loading ? "-" : doneDocs}</div>
           </CardContent>
         </Card>
         <Card>
@@ -115,8 +119,8 @@ export default function Dashboard() {
             <div className="text-sm text-ink/60">Açık Rapor</div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{loading ? "—" : openReports}</div>
-            <div className="text-sm text-ink/50">Tamamlanan: {loading ? "—" : doneReports}</div>
+            <div className="text-3xl font-semibold">{loading ? "-" : openReports}</div>
+            <div className="text-sm text-ink/50">Tamamlanan: {loading ? "-" : doneReports}</div>
           </CardContent>
         </Card>
         <Card>
@@ -133,6 +137,17 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader>
+          <div className="text-sm text-ink/60">Yıl Bilgileri</div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-ink/70">
+            Çalışma yılı: <b>{settings?.working_year ?? "-"}</b> | Referans yılı: <b>{settings?.reference_year ?? "-"}</b>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -142,11 +157,11 @@ export default function Dashboard() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <div>Evraklar</div>
-                <div className="text-ink/60">{loading ? "—" : `${openDocs} açık / ${doneDocs} tamam`}</div>
+                <div className="text-ink/60">{loading ? "-" : `${openDocs} açık / ${doneDocs} tamam`}</div>
               </div>
               <div className="flex items-center justify-between">
                 <div>Raporlar</div>
-                <div className="text-ink/60">{loading ? "—" : `${openReports} açık / ${doneReports} tamam`}</div>
+                <div className="text-ink/60">{loading ? "-" : `${openReports} açık / ${doneReports} tamam`}</div>
               </div>
             </div>
           </CardContent>
@@ -160,7 +175,7 @@ export default function Dashboard() {
               </Button>
             </div>
             <div className="mt-1 text-xs text-ink/50">
-              Son güncelleme: {lastUpdated ? lastUpdated.toLocaleTimeString("tr-TR") : "—"}
+              Son güncelleme: {lastUpdated ? lastUpdated.toLocaleTimeString("tr-TR") : "-"}
             </div>
           </CardHeader>
           <CardContent>
@@ -187,3 +202,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
