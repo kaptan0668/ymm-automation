@@ -62,14 +62,41 @@ class AuditBase(models.Model):
     class Meta:
         abstract = True
 
+IDENTITY_TYPES = [
+    ("VKN", "Vergi No"),
+    ("TCKN", "TCKN"),
+]
+
+
 class Customer(AuditBase):
     name = models.CharField(max_length=255, verbose_name="Müşteri adı")
-    tax_no = models.CharField(max_length=32, unique=True, verbose_name="Vergi numarası")
+    identity_type = models.CharField(
+        max_length=8,
+        choices=IDENTITY_TYPES,
+        default="VKN",
+        verbose_name="Kimlik türü",
+    )
+    tax_no = models.CharField(
+        max_length=10,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Vergi numarası",
+    )
+    tckn = models.CharField(
+        max_length=11,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="TCKN",
+    )
     tax_office = models.CharField(max_length=255, null=True, blank=True, verbose_name="Vergi dairesi")
     address = models.TextField(null=True, blank=True, verbose_name="Adres")
     phone = models.CharField(max_length=64, null=True, blank=True, verbose_name="Telefon")
     email = models.CharField(max_length=255, null=True, blank=True, verbose_name="E-posta")
     contact_person = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili kişi")
+    contact_phone = models.CharField(max_length=64, null=True, blank=True, verbose_name="Yetkili telefon")
+    contact_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili e-posta")
 
     def __str__(self):
         return self.name

@@ -312,12 +312,19 @@ class ContractViewSet(AuditViewSet):
 
         customer_id = request.data.get("customer")
         tax_no = parsed.get("tax_no") or request.data.get("tax_no")
+        tckn = request.data.get("tckn")
+        if not tckn and tax_no and str(tax_no).isdigit() and len(str(tax_no)) == 11:
+            tckn = str(tax_no)
 
         customer = None
         if customer_id:
             customer = Customer.objects.filter(id=customer_id).first()
         elif tax_no:
             customer = Customer.objects.filter(tax_no=tax_no).first()
+            if not customer and tckn:
+                customer = Customer.objects.filter(tckn=tckn).first()
+        elif tckn:
+            customer = Customer.objects.filter(tckn=tckn).first()
 
         if not customer:
             return Response({"error": "Müşteri bulunamadı. Lütfen müşteri seçin."}, status=400)

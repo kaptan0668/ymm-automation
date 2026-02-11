@@ -64,6 +64,43 @@ def _presign(url: str) -> str | None:
     )
 
 class CustomerSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        identity_type = attrs.get("identity_type", getattr(instance, "identity_type", "VKN"))
+        tax_no = attrs.get("tax_no", getattr(instance, "tax_no", None))
+        tckn = attrs.get("tckn", getattr(instance, "tckn", None))
+
+        tax_no = (tax_no or "").strip() or None
+        tckn = (tckn or "").strip() or None
+
+        if tax_no and (not tax_no.isdigit() or len(tax_no) != 10):
+            raise serializers.ValidationError({"tax_no": "Vergi No 10 haneli ve sadece rakam olmalıdır."})
+        if tckn and (not tckn.isdigit() or len(tckn) != 11):
+            raise serializers.ValidationError({"tckn": "TCKN 11 haneli ve sadece rakam olmalıdır."})
+
+        if identity_type == "VKN":
+            if not tax_no:
+                raise serializers.ValidationError({"tax_no": "Vergi No zorunludur."})
+            tckn = None
+        elif identity_type == "TCKN":
+            if not tckn:
+                raise serializers.ValidationError({"tckn": "TCKN zorunludur."})
+            tax_no = None
+        else:
+            raise serializers.ValidationError({"identity_type": "Geçersiz kimlik türü."})
+
+        qs = Customer.objects.all()
+        if instance:
+            qs = qs.exclude(pk=instance.pk)
+        if tax_no and qs.filter(tax_no=tax_no).exists():
+            raise serializers.ValidationError({"tax_no": "Bu Vergi No ile kayıtlı müşteri zaten var."})
+        if tckn and qs.filter(tckn=tckn).exists():
+            raise serializers.ValidationError({"tckn": "Bu TCKN ile kayıtlı müşteri zaten var."})
+
+        attrs["tax_no"] = tax_no
+        attrs["tckn"] = tckn
+        return attrs
+
     class Meta:
         model = Customer
         fields = "__all__"

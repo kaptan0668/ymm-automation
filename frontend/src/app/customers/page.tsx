@@ -6,16 +6,21 @@ import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { formatPhoneInput, normalizePhoneForApi, onlyDigits } from "@/lib/format";
 
 type Customer = {
   id: number;
   name: string;
-  tax_no: string;
+  identity_type: "VKN" | "TCKN";
+  tax_no?: string;
+  tckn?: string;
   tax_office?: string;
   address?: string;
   phone?: string;
   email?: string;
   contact_person?: string;
+  contact_phone?: string;
+  contact_email?: string;
 };
 
 type FileRow = {
@@ -49,12 +54,16 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadıng, setLoadıng] = useState(true);
   const [name, setName] = useState("");
+  const [identityType, setIdentityType] = useState<"VKN" | "TCKN">("VKN");
   const [taxNo, setTaxNo] = useState("");
+  const [tckn, setTckn] = useState("");
   const [taxOffice, setTaxOffice] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,12 +100,16 @@ export default function CustomersPage() {
         method: "POST",
         body: JSON.stringify({
           name,
-          tax_no: taxNo,
+          identity_type: identityType,
+          tax_no: identityType === "VKN" ? onlyDigits(taxNo).slice(0, 10) : null,
+          tckn: identityType === "TCKN" ? onlyDigits(tckn).slice(0, 11) : null,
           tax_office: taxOffice || null,
           address: address || null,
-          phone: phone || null,
+          phone: normalizePhoneForApi(phone) || null,
           email: email || null,
-          contact_person: contactPerson || null
+          contact_person: contactPerson || null,
+          contact_phone: normalizePhoneForApi(contactPhone) || null,
+          contact_email: contactEmail || null
         })
       });
 
@@ -109,12 +122,16 @@ export default function CustomersPage() {
       }
 
       setName("");
+      setIdentityType("VKN");
       setTaxNo("");
+      setTckn("");
       setTaxOffice("");
       setAddress("");
       setPhone("");
       setEmail("");
       setContactPerson("");
+      setContactPhone("");
+      setContactEmail("");
       await load();
       setNotice("Müşteri eklendi.");
     } catch {
@@ -144,14 +161,48 @@ export default function CustomersPage() {
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
         <Input placeholder="Müşteri adı" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input placeholder="Vergi no" value={taxNo} onChange={(e) => setTaxNo(e.target.value)} />
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={identityType}
+          onChange={(e) => setIdentityType(e.target.value as "VKN" | "TCKN")}
+        >
+          <option value="VKN">Vergi No</option>
+          <option value="TCKN">TCKN</option>
+        </select>
+        {identityType === "VKN" ? (
+          <Input
+            placeholder="Vergi no (10)"
+            value={taxNo}
+            maxLength={10}
+            inputMode="numeric"
+            onChange={(e) => setTaxNo(onlyDigits(e.target.value).slice(0, 10))}
+          />
+        ) : (
+          <Input
+            placeholder="TCKN (11)"
+            value={tckn}
+            maxLength={11}
+            inputMode="numeric"
+            onChange={(e) => setTckn(onlyDigits(e.target.value).slice(0, 11))}
+          />
+        )}
         <Input placeholder="Vergi dairesi" value={taxOffice} onChange={(e) => setTaxOffice(e.target.value)} />
         <Input placeholder="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
-        <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} />
         <Input placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input placeholder="Yetkili kisi" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+        <Input placeholder="Yetkili telefon" value={contactPhone} onChange={(e) => setContactPhone(formatPhoneInput(e.target.value))} />
+        <Input placeholder="Yetkili e-posta" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
         <FilePicker label="Sözleşme dosyası (opsiyonel)" onChange={setContractFile} />
-        <Button type="submit" disabled={!token || saving || !name || !taxNo}>
+        <Button
+          type="submit"
+          disabled={
+            !token ||
+            saving ||
+            !name ||
+            (identityType === "VKN" ? onlyDigits(taxNo).length !== 10 : onlyDigits(tckn).length !== 11)
+          }
+        >
           {saving ? "Kaydediliyor..." : "Müşteri Ekle"}
         </Button>
       </form>
@@ -166,7 +217,7 @@ export default function CustomersPage() {
             <thead className="bg-haze text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Müşteri</th>
-                <th className="px-4 py-3 font-medium">Vergi No</th>
+                <th className="px-4 py-3 font-medium">Kimlik</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
                 <th className="px-4 py-3 font-medium">Düzenle</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
@@ -176,7 +227,9 @@ export default function CustomersPage() {
               {items.map((item) => (
                 <tr key={item.id} className="border-t border-ink/10">
                   <td className="px-4 py-3">{item.name}</td>
-                  <td className="px-4 py-3">{item.tax_no}</td>
+                  <td className="px-4 py-3">
+                    {item.identity_type === "TCKN" ? `TCKN: ${item.tckn || "-"}` : `VKN: ${item.tax_no || "-"}`}
+                  </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/customers/${item.id}`}>
                       Kartı Gör

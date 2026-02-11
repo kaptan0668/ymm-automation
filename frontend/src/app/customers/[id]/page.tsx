@@ -6,16 +6,22 @@ import { apiFetch, apiUpload, me } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
+import { formatPhoneDisplay, formatPhoneInput, normalizePhoneForApi, onlyDigits } from "@/lib/format";
 
 type Customer = {
   id: number;
   name: string;
-  tax_no: string;
+  identity_type: "VKN" | "TCKN";
+  tax_no?: string;
+  tckn?: string;
   tax_office?: string;
   address?: string;
   phone?: string;
   email?: string;
   contact_person?: string;
+  contact_phone?: string;
+  contact_email?: string;
 };
 
 type FileRow = {
@@ -101,12 +107,16 @@ export default function CustomerCardPage() {
   const [isStaff, setIsStaff] = useState(false);
 
   const [name, setName] = useState("");
+  const [identityType, setIdentityType] = useState<"VKN" | "TCKN">("VKN");
   const [taxNo, setTaxNo] = useState("");
+  const [tckn, setTckn] = useState("");
   const [taxOffice, setTaxOffice] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
 
   const [showDocs, setShowDocs] = useState(true);
   const [showReports, setShowReports] = useState(true);
@@ -135,12 +145,16 @@ export default function CustomerCardPage() {
         setContracts(contractItems);
         setIsStaff(Boolean(meInfo?.is_staff));
         setName(c.name || "");
+        setIdentityType(c.identity_type || "VKN");
         setTaxNo(c.tax_no || "");
+        setTckn(c.tckn || "");
         setTaxOffice(c.tax_office || "");
         setAddress(c.address || "");
-        setPhone(c.phone || "");
+        setPhone(formatPhoneInput(c.phone || ""));
         setEmail(c.email || "");
         setContactPerson(c.contact_person || "");
+        setContactPhone(formatPhoneInput(c.contact_phone || ""));
+        setContactEmail(c.contact_email || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -165,12 +179,16 @@ export default function CustomerCardPage() {
         method: "PATCH",
         body: JSON.stringify({
           name,
-          tax_no: taxNo,
+          identity_type: identityType,
+          tax_no: identityType === "VKN" ? onlyDigits(taxNo).slice(0, 10) : null,
+          tckn: identityType === "TCKN" ? onlyDigits(tckn).slice(0, 11) : null,
           tax_office: taxOffice || null,
           address: address || null,
-          phone: phone || null,
+          phone: normalizePhoneForApi(phone) || null,
           email: email || null,
-          contact_person: contactPerson || null
+          contact_person: contactPerson || null,
+          contact_phone: normalizePhoneForApi(contactPhone) || null,
+          contact_email: contactEmail || null
         })
       });
       setCustomer(updated);
@@ -232,9 +250,12 @@ export default function CustomerCardPage() {
           <div>
             <div className="text-xs uppercase tracking-widest text-ink/50">Müşteri Kartı</div>
             <h1 className="text-3xl font-semibold">{customer.name}</h1>
-            <div className="mt-1 text-sm text-ink/60">Vergi No: {customer.tax_no}</div>
+            <div className="mt-1 text-sm text-ink/60">
+              {customer.identity_type === "TCKN" ? `TCKN: ${customer.tckn || "-"}` : `Vergi No: ${customer.tax_no || "-"}`}
+            </div>
           </div>
           <div className="flex items-center gap-2 print-hide">
+            <BackButton />
             <Button variant="outline" onClick={() => setEditing((v) => !v)}>
               {editing ? "İptal" : "Düzenle"}
             </Button>
@@ -243,14 +264,18 @@ export default function CustomerCardPage() {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-ink/10 bg-white p-4 text-sm">
+            <div><b>Kimlik Türü:</b> {customer.identity_type === "TCKN" ? "TCKN" : "Vergi No"}</div>
             <div><b>Vergi No:</b> {customer.tax_no || "-"}</div>
+            <div><b>TCKN:</b> {customer.tckn || "-"}</div>
             <div><b>Vergi Dairesi:</b> {customer.tax_office || "-"}</div>
             <div><b>Adres:</b> {customer.address || "-"}</div>
           </div>
           <div className="rounded-xl border border-ink/10 bg-white p-4 text-sm">
-            <div><b>Telefon:</b> {customer.phone || "-"}</div>
+            <div><b>Telefon:</b> {formatPhoneDisplay(customer.phone)}</div>
             <div><b>E-posta:</b> {customer.email || "-"}</div>
             <div><b>Yetkili:</b> {customer.contact_person || "-"}</div>
+            <div><b>Yetkili Telefon:</b> {formatPhoneDisplay(customer.contact_phone)}</div>
+            <div><b>Yetkili E-posta:</b> {customer.contact_email || "-"}</div>
           </div>
         </div>
       </div>
@@ -274,8 +299,10 @@ export default function CustomerCardPage() {
             <div className="text-2xl font-semibold">{contractCount}</div>
           </div>
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
-            <div className="text-xs text-ink/60">Vergi No</div>
-            <div className="text-base font-semibold">{customer.tax_no}</div>
+            <div className="text-xs text-ink/60">Kimlik</div>
+            <div className="text-base font-semibold">
+              {customer.identity_type === "TCKN" ? customer.tckn : customer.tax_no}
+            </div>
           </div>
         </div>
       </div>
@@ -286,13 +313,46 @@ export default function CustomerCardPage() {
         <form onSubmit={handleSave} className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
           <div className="text-sm text-ink/60">Müşteri bilgilerini düzenle</div>
           <Input placeholder="Müşteri adı" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Vergi no" value={taxNo} onChange={(e) => setTaxNo(e.target.value)} />
+          <select
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            value={identityType}
+            onChange={(e) => setIdentityType(e.target.value as "VKN" | "TCKN")}
+          >
+            <option value="VKN">Vergi No</option>
+            <option value="TCKN">TCKN</option>
+          </select>
+          {identityType === "VKN" ? (
+            <Input
+              placeholder="Vergi no (10)"
+              value={taxNo}
+              maxLength={10}
+              inputMode="numeric"
+              onChange={(e) => setTaxNo(onlyDigits(e.target.value).slice(0, 10))}
+            />
+          ) : (
+            <Input
+              placeholder="TCKN (11)"
+              value={tckn}
+              maxLength={11}
+              inputMode="numeric"
+              onChange={(e) => setTckn(onlyDigits(e.target.value).slice(0, 11))}
+            />
+          )}
           <Input placeholder="Vergi dairesi" value={taxOffice} onChange={(e) => setTaxOffice(e.target.value)} />
           <Input placeholder="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
-          <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="Telefon" value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} />
           <Input placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input placeholder="Yetkili kişi" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-          <Button type="submit" disabled={saving}>
+          <Input placeholder="Yetkili telefon" value={contactPhone} onChange={(e) => setContactPhone(formatPhoneInput(e.target.value))} />
+          <Input placeholder="Yetkili e-posta" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+          <Button
+            type="submit"
+            disabled={
+              saving ||
+              !name ||
+              (identityType === "VKN" ? onlyDigits(taxNo).length !== 10 : onlyDigits(tckn).length !== 11)
+            }
+          >
             {saving ? "Kaydediliyor..." : "Kaydet"}
           </Button>
         </form>

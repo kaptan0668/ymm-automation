@@ -26,8 +26,8 @@ class AuditAdmin(admin.ModelAdmin):
 
 @admin.register(Customer)
 class CustomerAdmin(AuditAdmin):
-    list_display = ("name", "tax_no", "is_archived", "created_at")
-    search_fields = ("name", "tax_no")
+    list_display = ("name", "identity_type", "tax_no", "tckn", "is_archived", "created_at")
+    search_fields = ("name", "tax_no", "tckn")
 
 
 @admin.register(Document)
