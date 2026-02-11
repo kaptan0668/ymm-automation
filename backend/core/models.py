@@ -77,7 +77,7 @@ class Customer(AuditBase):
         verbose_name="Kimlik türü",
     )
     tax_no = models.CharField(
-        max_length=10,
+        max_length=32,
         unique=True,
         null=True,
         blank=True,
@@ -383,4 +383,5 @@ def next_report_number(report_type: str, year: int) -> tuple[str, int, int]:
         year_serial = year_counter.last_serial
         report_no = f"YMM-{YMM_LICENSE_NO}-{type_cum}/{year}-{year_serial:03d}"
         return report_no, type_cum, year_serial
+
 

@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="customer",
             name="tax_no",
-            field=models.CharField(blank=True, max_length=10, null=True, unique=True, verbose_name="Vergi numarası"),
+            field=models.CharField(blank=True, max_length=32, null=True, unique=True, verbose_name="Vergi numarası"),
         ),
     ]
+
