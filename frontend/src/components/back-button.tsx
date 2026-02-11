@@ -7,7 +7,7 @@ export function BackButton({ label = "Geri" }: { label?: string }) {
   const router = useRouter();
   return (
     <Button variant="outline" className="print-hide" onClick={() => router.back()}>
-      <- {label}
+      {"<"}- {label}
     </Button>
   );
 }
