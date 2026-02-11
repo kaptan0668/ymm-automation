@@ -111,7 +111,7 @@ class DocumentCounter(models.Model):
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
-        unique_together = ("doc_type", "year")
+        unique_together = (("doc_type", "year"),)
         verbose_name = "Evrak Sayacı"
         verbose_name_plural = "Evrak Sayaçları"
 
@@ -135,7 +135,7 @@ class ReportCounterTypeCum(models.Model):
     last_serial = models.IntegerField(default=0, verbose_name="Son seri")
 
     class Meta:
-        unique_together = ("report_type",)
+        unique_together = (("report_type",),)
         verbose_name = "Rapor Türü Kümülatif Sayacı"
         verbose_name_plural = "Rapor Türü Kümülatif Sayaçları"
 
