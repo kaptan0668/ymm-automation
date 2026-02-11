@@ -310,6 +310,13 @@ class ContractViewSet(AuditViewSet):
             if request.data.get(key):
                 parsed[key] = request.data.get(key)
 
+        contract_no = (parsed.get("contract_no") or "").strip()
+        contract_type = (parsed.get("contract_type") or "").strip()
+        if not contract_no:
+            return Response({"error": "Sözleşme numarası zorunludur."}, status=400)
+        if not contract_type:
+            return Response({"error": "Sözleşme türü zorunludur."}, status=400)
+
         customer_id = request.data.get("customer")
         tax_no = parsed.get("tax_no") or request.data.get("tax_no")
         tckn = request.data.get("tckn")
@@ -349,9 +356,9 @@ class ContractViewSet(AuditViewSet):
 
         contract = Contract.objects.create(
             customer=customer,
-            contract_no=parsed.get("contract_no"),
+            contract_no=contract_no,
             contract_date=parsed.get("contract_date"),
-            contract_type=parsed.get("contract_type"),
+            contract_type=contract_type,
             period_start_month=parsed.get("period_start_month"),
             period_start_year=parsed.get("period_start_year"),
             period_end_month=parsed.get("period_end_month"),

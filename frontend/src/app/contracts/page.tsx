@@ -165,9 +165,9 @@ export default function ContractsPage() {
           ))}
         </select>
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <Input placeholder="Sözleşme no (opsiyonel)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
-        <Input type="date" placeholder="Sözleşme tarihi (opsiyonel)" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
-        <Input placeholder="Sözleşme türü (opsiyonel)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
+        <Input placeholder="Sözleşme no (zorunlu)" value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
+        <Input type="date" placeholder="Sözleşme tarihi" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
+        <Input placeholder="Sözleşme türü (zorunlu)" value={contractType} onChange={(e) => setContractType(e.target.value)} />
         <div className="flex gap-2">
           <select
             className="h-10 flex-1 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -220,7 +220,7 @@ export default function ContractsPage() {
             ))}
           </select>
         </div>
-        <Button type="submit" disabled={!token || saving || !file || !customerId}>
+        <Button type="submit" disabled={!token || saving || !file || !customerId || !contractNo.trim() || !contractType.trim()}>
           {saving ? "Yükleniyor..." : "Sözleşme Yükle"}
         </Button>
       </form>
