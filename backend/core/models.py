@@ -407,7 +407,14 @@ def next_document_number(doc_type: str, year: int) -> tuple[str, int]:
         counter, _ = DocumentCounter.objects.select_for_update().get_or_create(
             doc_type=doc_type, year=year
         )
-        counter.last_serial += 1
+        max_existing_serial = (
+            Document.objects.filter(doc_type=doc_type, year=year)
+            .order_by("-serial")
+            .values_list("serial", flat=True)
+            .first()
+            or 0
+        )
+        counter.last_serial = max(counter.last_serial, max_existing_serial) + 1
         counter.save()
         serial = counter.last_serial
         return f"YMM-{YMM_LICENSE_NO}-{doc_type}-{year}-{serial:03d}", serial
@@ -419,8 +426,21 @@ def next_report_number(report_type: str, year: int) -> tuple[str, int, int]:
         year_counter, _ = ReportCounterYearAll.objects.select_for_update().get_or_create(
             year=year
         )
-        global_counter.last_serial += 1
-        year_counter.last_serial += 1
+        max_existing_global = (
+            Report.objects.order_by("-type_cumulative")
+            .values_list("type_cumulative", flat=True)
+            .first()
+            or 0
+        )
+        max_existing_year = (
+            Report.objects.filter(year=year)
+            .order_by("-year_serial_all")
+            .values_list("year_serial_all", flat=True)
+            .first()
+            or 0
+        )
+        global_counter.last_serial = max(global_counter.last_serial, max_existing_global) + 1
+        year_counter.last_serial = max(year_counter.last_serial, max_existing_year) + 1
         global_counter.save()
         year_counter.save()
 
