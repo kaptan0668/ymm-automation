@@ -180,7 +180,14 @@ export default function ContractDetailPage() {
               <div className="text-sm text-ink/60">Bu sözleşmeye bağlı evrak yok.</div>
             ) : (
               documents.map((d) => (
-                <div key={d.id} className="rounded-xl border border-ink/10 bg-white p-3 text-sm">
+                <div
+                  key={d.id}
+                  className={
+                    d.status === "DONE"
+                      ? "rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-sm"
+                      : "rounded-xl border border-ink/10 bg-white p-3 text-sm"
+                  }
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-semibold">{d.doc_no}</div>
@@ -203,7 +210,14 @@ export default function ContractDetailPage() {
               <div className="text-sm text-ink/60">Bu sözleşmeye bağlı rapor yok.</div>
             ) : (
               reports.map((r) => (
-                <div key={r.id} className="rounded-xl border border-ink/10 bg-white p-3 text-sm">
+                <div
+                  key={r.id}
+                  className={
+                    r.status === "DONE"
+                      ? "rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-sm"
+                      : "rounded-xl border border-ink/10 bg-white p-3 text-sm"
+                  }
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-semibold">{r.report_no}</div>
@@ -222,4 +236,3 @@ export default function ContractDetailPage() {
     </div>
   );
 }
-
