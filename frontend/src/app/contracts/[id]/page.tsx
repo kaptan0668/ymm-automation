@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
@@ -10,6 +10,7 @@ import { formatPhoneDisplay } from "@/lib/format";
 
 type ContractRow = {
   id: number;
+  status?: "OPEN" | "DONE";
   contract_no?: string;
   contract_date?: string;
   contract_type?: string;
@@ -38,20 +39,44 @@ type Customer = {
   contact_email?: string;
 };
 
+type DocumentRow = {
+  id: number;
+  doc_no: string;
+  received_date?: string;
+  subject?: string;
+  status?: "OPEN" | "DONE";
+};
+
+type ReportRow = {
+  id: number;
+  report_no: string;
+  received_date?: string;
+  subject?: string;
+  status?: "OPEN" | "DONE";
+};
+
 export default function ContractDetailPage() {
   const params = useParams();
   const id = params?.id as string;
   const [contract, setContract] = useState<ContractRow | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [reports, setReports] = useState<ReportRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
         const c = await apiFetch<ContractRow>(`/api/contracts/${id}/`);
+        const [cust, docs, reps] = await Promise.all([
+          apiFetch<Customer>(`/api/customers/${c.customer}/`),
+          apiFetch<DocumentRow[]>(`/api/documents/?contract=${c.id}`),
+          apiFetch<ReportRow[]>(`/api/reports/?contract=${c.id}`)
+        ]);
         setContract(c);
-        const cust = await apiFetch<Customer>(`/api/customers/${c.customer}/`);
         setCustomer(cust);
+        setDocuments(docs);
+        setReports(reps);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -60,34 +85,52 @@ export default function ContractDetailPage() {
     load();
   }, [id]);
 
-  if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!contract || !customer) return <div>Yukleniyor...</div>;
+  const period = useMemo(() => {
+    if (
+      !contract?.period_start_month ||
+      !contract?.period_start_year ||
+      !contract?.period_end_month ||
+      !contract?.period_end_year
+    ) {
+      return "-";
+    }
+    return `${String(contract.period_start_month).padStart(2, "0")}/${contract.period_start_year}-${String(
+      contract.period_end_month
+    ).padStart(2, "0")}/${contract.period_end_year}`;
+  }, [contract]);
 
-  const period =
-    contract.period_start_month &&
-    contract.period_start_year &&
-    contract.period_end_month &&
-    contract.period_end_year
-      ? `${String(contract.period_start_month).padStart(2, "0")}/${contract.period_start_year}-${String(
-          contract.period_end_month
-        ).padStart(2, "0")}/${contract.period_end_year}`
-      : "-";
+  if (error) return <div className="text-sm text-red-600">{error}</div>;
+  if (!contract || !customer) return <div>Yükleniyor...</div>;
 
   return (
     <div className="space-y-6 print-area">
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-widest text-ink/50">Sozlesme Karti</div>
-            <h1 className="text-3xl font-semibold">{contract.contract_no || "Sozlesme"}</h1>
+            <div className="text-xs uppercase tracking-widest text-ink/50">Sözleşme Kartı</div>
+            <h1 className="text-3xl font-semibold">{contract.contract_no || `Sözleşme #${contract.id}`}</h1>
             <div className="mt-1 text-sm text-ink/60">{customer.name}</div>
+            <div className="mt-2">
+              <span
+                className={
+                  contract.status === "DONE"
+                    ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                    : "inline-flex items-center gap-1 rounded-full border border-ink/20 bg-white px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                }
+              >
+                <span>{contract.status === "DONE" ? "✓" : "○"}</span>
+                {contract.status === "DONE" ? "Tamamlandı" : "Açık"}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <BackButton />
             <Link className="text-sm text-terracotta print-hide" href={`/customers/${customer.id}`}>
-              Musteri Karti
+              Müşteri Kartı
             </Link>
-            <Button className="print-hide" onClick={() => window.print()}>Yazdir</Button>
+            <Button className="print-hide" onClick={() => window.print()}>
+              Yazdır
+            </Button>
           </div>
         </div>
       </div>
@@ -95,10 +138,10 @@ export default function ContractDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
           <div className="grid gap-3">
-            <div><b>Sozlesme Tarihi:</b> {contract.contract_date || "-"}</div>
-            <div><b>Sozlesme No:</b> {contract.contract_no || "-"}</div>
-            <div><b>Sozlesme Turu:</b> {contract.contract_type || "-"}</div>
-            <div><b>Donemi:</b> {period}</div>
+            <div><b>Sözleşme Tarihi:</b> {contract.contract_date || "-"}</div>
+            <div><b>Sözleşme No:</b> {contract.contract_no || "-"}</div>
+            <div><b>Sözleşme Türü:</b> {contract.contract_type || "-"}</div>
+            <div><b>Dönemi:</b> {period}</div>
           </div>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 text-sm">
@@ -117,17 +160,66 @@ export default function ContractDetailPage() {
       </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
-        <h2 className="text-xl font-semibold">Dosya</h2>
+        <h2 className="text-xl font-semibold">Sözleşme Dosyası</h2>
         <div className="mt-4">
           {contract.file_url || contract.signed_url ? (
             <a className="text-terracotta" href={contract.signed_url ?? contract.file_url} target="_blank" rel="noreferrer">
-              {contract.filename || "Sozlesme dosyasi"}
+              {contract.filename || "Sözleşme dosyası"}
             </a>
           ) : (
-            <div className="text-sm text-ink/60">Dosya bulunamadi.</div>
+            <div className="text-sm text-ink/60">Dosya bulunamadı.</div>
           )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+          <h2 className="text-xl font-semibold">Bağlı Evraklar</h2>
+          <div className="mt-4 space-y-2">
+            {documents.length === 0 ? (
+              <div className="text-sm text-ink/60">Bu sözleşmeye bağlı evrak yok.</div>
+            ) : (
+              documents.map((d) => (
+                <div key={d.id} className="rounded-xl border border-ink/10 bg-white p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-semibold">{d.doc_no}</div>
+                      <div className="text-ink/60">{d.subject || "-"}</div>
+                    </div>
+                    <Link className="text-terracotta" href={`/documents/${d.id}`}>
+                      Aç
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+          <h2 className="text-xl font-semibold">Bağlı Raporlar</h2>
+          <div className="mt-4 space-y-2">
+            {reports.length === 0 ? (
+              <div className="text-sm text-ink/60">Bu sözleşmeye bağlı rapor yok.</div>
+            ) : (
+              reports.map((r) => (
+                <div key={r.id} className="rounded-xl border border-ink/10 bg-white p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-semibold">{r.report_no}</div>
+                      <div className="text-ink/60">{r.subject || "-"}</div>
+                    </div>
+                    <Link className="text-terracotta" href={`/reports/${r.id}`}>
+                      Aç
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

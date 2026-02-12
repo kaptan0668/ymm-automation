@@ -70,6 +70,22 @@ def _ensure_bucket(client, bucket):
         client.create_bucket(Bucket=bucket)
 
 
+def _sync_contract_status(contract_id: int | None):
+    if not contract_id:
+        return
+    contract = Contract.objects.filter(id=contract_id).first()
+    if not contract:
+        return
+    linked_reports = Report.objects.filter(contract_id=contract_id, is_archived=False)
+    if linked_reports.exists() and not linked_reports.exclude(status="DONE").exists():
+        new_status = "DONE"
+    else:
+        new_status = "OPEN"
+    if contract.status != new_status:
+        contract.status = new_status
+        contract.save(update_fields=["status", "updated_at"])
+
+
 class AuditViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -137,8 +153,11 @@ class DocumentViewSet(AuditViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         customer = self.request.query_params.get("customer")
+        contract = self.request.query_params.get("contract")
         if customer:
             qs = qs.filter(customer_id=customer)
+        if contract:
+            qs = qs.filter(contract_id=contract)
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -158,8 +177,11 @@ class ReportViewSet(AuditViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         customer = self.request.query_params.get("customer")
+        contract = self.request.query_params.get("contract")
         if customer:
             qs = qs.filter(customer_id=customer)
+        if contract:
+            qs = qs.filter(contract_id=contract)
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -169,7 +191,20 @@ class ReportViewSet(AuditViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        _sync_contract_status(serializer.instance.contract_id)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        old_contract_id = serializer.instance.contract_id
+        super().perform_update(serializer)
+        new_contract_id = serializer.instance.contract_id
+        _sync_contract_status(old_contract_id)
+        _sync_contract_status(new_contract_id)
+
+    def perform_destroy(self, instance):
+        contract_id = instance.contract_id
+        super().perform_destroy(instance)
+        _sync_contract_status(contract_id)
 
 
 class FileViewSet(AuditViewSet):
@@ -181,12 +216,15 @@ class FileViewSet(AuditViewSet):
         document = self.request.query_params.get("document")
         report = self.request.query_params.get("report")
         customer = self.request.query_params.get("customer")
+        scope = self.request.query_params.get("scope")
         if document:
             qs = qs.filter(document_id=document)
         if report:
             qs = qs.filter(report_id=report)
         if customer:
             qs = qs.filter(customer_id=customer)
+        if scope == "other":
+            qs = qs.filter(document__isnull=True, report__isnull=True)
         return qs
 
     @action(detail=False, methods=["post"])
@@ -228,8 +266,9 @@ class FileViewSet(AuditViewSet):
             except Report.DoesNotExist:
                 customer_id = None
 
+        display_name = (request.data.get("filename") or "").strip() or upload.name
         file_obj = File.objects.create(
-            filename=upload.name,
+            filename=display_name,
             content_type=upload.content_type or "application/octet-stream",
             size=upload.size,
             url=url,
@@ -270,8 +309,11 @@ class ContractViewSet(AuditViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         customer = self.request.query_params.get("customer")
+        status_filter = self.request.query_params.get("status")
         if customer:
             qs = qs.filter(customer_id=customer)
+        if status_filter:
+            qs = qs.filter(status=status_filter)
         return qs
 
     @action(detail=False, methods=["post"])

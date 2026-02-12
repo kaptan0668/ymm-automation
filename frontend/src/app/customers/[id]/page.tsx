@@ -51,6 +51,7 @@ type ReportRow = {
 
 type ContractRow = {
   id: number;
+  status?: "OPEN" | "DONE";
   contract_no?: string;
   contract_date?: string;
   contract_type?: string;
@@ -68,26 +69,6 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
       <div className="text-base font-semibold text-ink">{title}</div>
       <div className="mt-1">{subtitle}</div>
     </div>
-  );
-}
-
-function FilePicker({
-  label,
-  onChange
-}: {
-  label: string;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
-      <span>{label}</span>
-      <span className="text-xs text-terracotta">Seç</span>
-      <input
-        type="file"
-        className="hidden"
-        onChange={(e) => onChange(e.target.files?.[0] || null)}
-      />
-    </label>
   );
 }
 
@@ -118,14 +99,13 @@ export default function CustomerCardPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
-  const [showDocs, setShowDocs] = useState(true);
-  const [showReports, setShowReports] = useState(true);
-  const [showContracts, setShowContracts] = useState(true);
-  const [showOtherFiles, setShowOtherFiles] = useState(true);
+  const [showDocs, setShowDocs] = useState(false);
+  const [showReports, setShowReports] = useState(false);
+  const [showContracts, setShowContracts] = useState(false);
+  const [showOtherFiles, setShowOtherFiles] = useState(false);
 
-  const [file1, setFile1] = useState<File | null>(null);
-  const [file2, setFile2] = useState<File | null>(null);
-  const [file3, setFile3] = useState<File | null>(null);
+  const [otherFile, setOtherFile] = useState<File | null>(null);
+  const [otherFileName, setOtherFileName] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -134,7 +114,7 @@ export default function CustomerCardPage() {
           apiFetch<Customer>(`/api/customers/${id}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?customer=${id}`),
           apiFetch<ReportRow[]>(`/api/reports/?customer=${id}`),
-          apiFetch<FileRow[]>(`/api/files/?customer=${id}`),
+          apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`),
           apiFetch<ContractRow[]>(`/api/contracts/?customer=${id}`),
           me()
         ]);
@@ -204,25 +184,24 @@ export default function CustomerCardPage() {
 
   async function handleUploadCustomerFiles() {
     if (!customer) return;
-    const filesToUpload = [file1, file2, file3].filter(Boolean) as File[];
-    if (filesToUpload.length === 0) return;
-    for (const f of filesToUpload) {
-      const fd = new FormData();
-      fd.append("file", f);
-      fd.append("customer", String(customer.id));
-      await apiUpload("/api/files/upload/", fd);
+    if (!otherFile) return;
+    const fd = new FormData();
+    fd.append("file", otherFile);
+    fd.append("customer", String(customer.id));
+    if (otherFileName.trim()) {
+      fd.append("filename", otherFileName.trim());
     }
-    setFile1(null);
-    setFile2(null);
-    setFile3(null);
-    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}`);
+    await apiUpload("/api/files/upload/", fd);
+    setOtherFile(null);
+    setOtherFileName("");
+    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}&scope=other`);
     setFiles(updatedFiles);
   }
 
   async function handleDeleteFile(fileId: number) {
     if (!confirm("Dosya silinsin mi?")) return;
     await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
-    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${id}`);
+    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`);
     setFiles(updatedFiles);
   }
 
@@ -385,9 +364,26 @@ export default function CustomerCardPage() {
                       </a>
                     ) : null}
                   </div>
-                  <div className="mt-1 text-sm font-semibold">{c.contract_no || "-"}</div>
+                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold">
+                    {c.contract_no || "-"}
+                    <span
+                      className={
+                        c.status === "DONE"
+                          ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                          : "inline-flex items-center gap-1 rounded-full border border-ink/20 bg-white px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                      }
+                    >
+                      <span>{c.status === "DONE" ? "✓" : "○"}</span>
+                      {c.status === "DONE" ? "Tamamlandı" : "Açık"}
+                    </span>
+                  </div>
                   <div className="mt-1 text-sm text-ink/60">
                     Tür: {c.contract_type || "-"} • Dönem: {formatPeriod(c)}
+                  </div>
+                  <div className="mt-2">
+                    <Link className="text-sm text-terracotta" href={`/contracts/${c.id}`}>
+                      Sözleşme Kartını Aç
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -521,21 +517,26 @@ export default function CustomerCardPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Diğer Dosyalar</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowOtherFiles((v) => !v)}>
-              {showOtherFiles ? "Gizle" : "Göster"}
-            </Button>
-            <Button variant="outline" onClick={handleUploadCustomerFiles}>
-              Dosya Yükle
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setShowOtherFiles((v) => !v)}>
+            {showOtherFiles ? "Gizle" : "Göster"}
+          </Button>
         </div>
         {showOtherFiles ? (
           <>
-            <div className="grid gap-2 md:grid-cols-3">
-              <FilePicker label="Dosya 1" onChange={setFile1} />
-              <FilePicker label="Dosya 2" onChange={setFile2} />
-              <FilePicker label="Dosya 3" onChange={setFile3} />
+            <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+              <Input
+                placeholder="Dosya adı (opsiyonel)"
+                value={otherFileName}
+                onChange={(e) => setOtherFileName(e.target.value)}
+              />
+              <input
+                type="file"
+                className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+                onChange={(e) => setOtherFile(e.target.files?.[0] || null)}
+              />
+              <Button variant="outline" onClick={handleUploadCustomerFiles} disabled={!otherFile}>
+                Yükle
+              </Button>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {files.length === 0 ? (

@@ -30,6 +30,7 @@ type ReportRow = {
   delivery_ebys_id?: string;
   delivery_ebys_date?: string;
   delivery_other_desc?: string;
+  contract?: number | null;
 };
 
 type Customer = {
@@ -37,26 +38,7 @@ type Customer = {
   name: string;
   tax_no: string;
 };
-
-function FilePicker({
-  label,
-  onChange
-}: {
-  label: string;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
-      <span>{label}</span>
-      <span className="text-xs text-terracotta">Seç</span>
-      <input
-        type="file"
-        className="hidden"
-        onChange={(e) => onChange(e.target.files?.[0] || null)}
-      />
-    </label>
-  );
-}
+type Contract = { id: number; contract_no?: string; status?: "OPEN" | "DONE" };
 
 const REPORT_TYPES = ["TT", "KDV", "OAR", "DGR"];
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -75,6 +57,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState("");
   const [reportType, setReportType] = useState("TT");
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [contractId, setContractId] = useState("");
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [workingYear, setWorkingYear] = useState<number | null>(null);
   const [receivedDate, setReceivedDate] = useState("");
@@ -94,9 +78,7 @@ export default function ReportsPage() {
   const [deliveryEbysId, setDeliveryEbysId] = useState("");
   const [deliveryEbysDate, setDeliveryEbysDate] = useState("");
   const [deliveryOtherDesc, setDeliveryOtherDesc] = useState("");
-  const [file1, setFile1] = useState<File | null>(null);
-  const [file2, setFile2] = useState<File | null>(null);
-  const [file3, setFile3] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [manualReportNo, setManualReportNo] = useState("");
   const [manualTypeCumulative, setManualTypeCumulative] = useState("");
   const [manualYearSerialAll, setManualYearSerialAll] = useState("");
@@ -141,6 +123,26 @@ export default function ReportsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    async function loadContracts() {
+      if (!customerId) {
+        setContracts([]);
+        setContractId("");
+        return;
+      }
+      try {
+        const items = await apiFetch<Contract[]>(`/api/contracts/?customer=${customerId}&status=OPEN`);
+        setContracts(items);
+        if (items.length === 0) {
+          setContractId("");
+        }
+      } catch {
+        setContracts([]);
+      }
+    }
+    loadContracts();
+  }, [customerId]);
 
   const token = getAccessToken();
 
@@ -197,6 +199,7 @@ export default function ReportsPage() {
         method: "POST",
         body: JSON.stringify({
           customer: Number(customerId),
+          contract: contractId ? Number(contractId) : null,
           report_type: reportType,
           year: Number(year),
           received_date: receivedDate || null,
@@ -226,21 +229,20 @@ export default function ReportsPage() {
         })
       });
 
-      const filesToUpload = [file1, file2, file3].filter(Boolean) as File[];
+      const filesToUpload = uploadFiles;
       for (const f of filesToUpload) {
         const fd = new FormData();
         fd.append("file", f);
         fd.append("report", String(rep.id));
         await apiUpload("/api/files/upload/", fd);
       }
-      setFile1(null);
-      setFile2(null);
-      setFile3(null);
+      setUploadFiles([]);
       setManualReportNo("");
       setManualTypeCumulative("");
       setManualYearSerialAll("");
 
       setCustomerId("");
+      setContractId("");
       setPeriodStartMonth("");
       setPeriodStartYear(String(workingYear ?? new Date().getFullYear()));
       setPeriodEndMonth("");
@@ -309,6 +311,19 @@ export default function ReportsPage() {
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={contractId}
+          onChange={(e) => setContractId(e.target.value)}
+          disabled={!customerId}
+        >
+          <option value="">Sözleşme seç (opsiyonel)</option>
+          {contracts.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.contract_no || `Sözleşme #${c.id}`}
             </option>
           ))}
         </select>
@@ -437,10 +452,23 @@ export default function ReportsPage() {
           onChange={(e) => setDescription(e.target.value)}
         />
 
-        <div className="grid gap-2 md:col-span-2 md:grid-cols-3">
-          <FilePicker label="Ek 1" onChange={setFile1} />
-          <FilePicker label="Ek 2" onChange={setFile2} />
-          <FilePicker label="Ek 3" onChange={setFile3} />
+        <div className="rounded-lg border border-dashed border-ink/20 bg-white p-3 md:col-span-2">
+          <label className="text-sm text-ink/70">Ek Dosyalar</label>
+          <input
+            type="file"
+            multiple
+            className="mt-2 block w-full text-sm"
+            onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+          />
+          {uploadFiles.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {uploadFiles.map((f) => (
+                <span key={`${f.name}-${f.size}`} className="rounded-full border border-ink/20 px-2 py-0.5 text-xs">
+                  {f.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {manualAllowed ? (

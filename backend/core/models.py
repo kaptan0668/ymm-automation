@@ -150,6 +150,14 @@ class AppSetting(models.Model):
 
 class Document(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
+    contract = models.ForeignKey(
+        "Contract",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+        verbose_name="Sözleşme",
+    )
     doc_type = models.CharField(max_length=3, choices=DOCUMENT_TYPES, verbose_name="Evrak türü")
     year = models.IntegerField(verbose_name="Yıl")
     serial = models.IntegerField(verbose_name="Seri")
@@ -211,6 +219,14 @@ class Document(AuditBase):
 
 class Report(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
+    contract = models.ForeignKey(
+        "Contract",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reports",
+        verbose_name="Sözleşme",
+    )
     report_type = models.CharField(max_length=3, choices=REPORT_TYPES, verbose_name="Rapor türü")
     year = models.IntegerField(verbose_name="Yıl")
     type_cumulative = models.IntegerField(verbose_name="Tür bazlı kümülatif sayaç")
@@ -340,6 +356,12 @@ class ContractJob(AuditBase):
 
 class Contract(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
+    status = models.CharField(
+        max_length=8,
+        choices=STATUS_CHOICES,
+        default="OPEN",
+        verbose_name="Durum",
+    )
     contract_no = models.CharField(max_length=64, null=True, blank=True, verbose_name="Sözleşme no")
     contract_date = models.DateField(null=True, blank=True, verbose_name="Sözleşme tarihi")
     contract_type = models.CharField(max_length=64, null=True, blank=True, verbose_name="Sözleşme türü")

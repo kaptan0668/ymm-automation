@@ -41,26 +41,6 @@ type FileRow = {
   signed_url?: string;
 };
 
-function FilePicker({
-  label,
-  onChange
-}: {
-  label: string;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-ink/20 bg-white px-3 py-2 text-sm text-ink/70 hover:bg-haze">
-      <span>{label}</span>
-      <span className="text-xs text-terracotta">Seç</span>
-      <input
-        type="file"
-        className="hidden"
-        onChange={(e) => onChange(e.target.files?.[0] || null)}
-      />
-    </label>
-  );
-}
-
 export default function ReportDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -73,9 +53,7 @@ export default function ReportDetailPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isStaff, setIsStaff] = useState(false);
 
-  const [file1, setFile1] = useState<File | null>(null);
-  const [file2, setFile2] = useState<File | null>(null);
-  const [file3, setFile3] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
@@ -163,7 +141,7 @@ export default function ReportDetailPage() {
 
   async function handleUploadFiles() {
     if (!rep) return;
-    const filesToUpload = [file1, file2, file3].filter(Boolean) as File[];
+    const filesToUpload = uploadFiles;
     if (filesToUpload.length === 0) return;
     for (const f of filesToUpload) {
       const fd = new FormData();
@@ -171,9 +149,7 @@ export default function ReportDetailPage() {
       fd.append("report", String(rep.id));
       await apiUpload("/api/files/upload/", fd);
     }
-    setFile1(null);
-    setFile2(null);
-    setFile3(null);
+    setUploadFiles([]);
     const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?report=${rep.id}`);
     setFiles(updatedFiles);
   }
@@ -348,10 +324,23 @@ export default function ReportDetailPage() {
           <h2 className="text-xl font-semibold">Ekler</h2>
           <Button variant="outline" onClick={handleUploadFiles}>Dosya Yükle</Button>
         </div>
-        <div className="mt-4 grid gap-2 md:grid-cols-3">
-          <FilePicker label="Ek 1" onChange={setFile1} />
-          <FilePicker label="Ek 2" onChange={setFile2} />
-          <FilePicker label="Ek 3" onChange={setFile3} />
+        <div className="mt-4 rounded-lg border border-dashed border-ink/20 bg-white p-3">
+          <label className="text-sm text-ink/70">Ek Dosyalar</label>
+          <input
+            type="file"
+            multiple
+            className="mt-2 block w-full text-sm"
+            onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+          />
+          {uploadFiles.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {uploadFiles.map((f) => (
+                <span key={`${f.name}-${f.size}`} className="rounded-full border border-ink/20 px-2 py-0.5 text-xs">
+                  {f.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {files.length === 0 ? (

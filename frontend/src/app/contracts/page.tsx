@@ -9,6 +9,7 @@ import Link from "next/link";
 
 type ContractRow = {
   id: number;
+  status?: "OPEN" | "DONE";
   contract_no?: string;
   contract_date?: string;
   contract_type?: string;
@@ -239,6 +240,7 @@ export default function ContractsPage() {
                 <th className="px-4 py-3 font-medium">Müşteri</th>
                 <th className="px-4 py-3 font-medium">Dönemi</th>
                 <th className="px-4 py-3 font-medium">Sözleşme Türü</th>
+                <th className="px-4 py-3 font-medium">Durum</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
                 {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
@@ -251,6 +253,18 @@ export default function ContractsPage() {
                   <td className="px-4 py-3">{customerMap.get(item.customer)?.name || "-"}</td>
                   <td className="px-4 py-3">{formatPeriod(item)}</td>
                   <td className="px-4 py-3">{item.contract_type || "-"}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={
+                        item.status === "DONE"
+                          ? "inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                          : "inline-flex items-center gap-1 rounded-full border border-ink/20 bg-white px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                      }
+                    >
+                      <span>{item.status === "DONE" ? "✓" : "○"}</span>
+                      {item.status === "DONE" ? "Tamamlandı" : "Açık"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <Link className="text-terracotta" href={`/contracts/${item.id}`}>
                       Kartı Gör

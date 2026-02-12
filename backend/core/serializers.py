@@ -150,8 +150,14 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        customer = attrs.get("customer", getattr(instance, "customer", None))
+        contract = attrs.get("contract", getattr(instance, "contract", None))
+        if contract and customer and contract.customer_id != customer.id:
+            raise serializers.ValidationError("Seçilen sözleşme müşteriyle uyumlu değil.")
+        if contract and contract.status == "DONE":
+            raise serializers.ValidationError("Tamamlanmış sözleşmeye yeni evrak bağlanamaz.")
         if instance:
-            locked_fields = ["customer", "doc_type", "year", "serial", "doc_no", "received_date"]
+            locked_fields = ["customer", "contract", "doc_type", "year", "serial", "doc_no", "received_date"]
             for field in locked_fields:
                 if field in attrs and attrs[field] != getattr(instance, field):
                     raise serializers.ValidationError(f"{field} değiştirilemez.")
@@ -221,6 +227,12 @@ class ReportSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        customer = attrs.get("customer", getattr(instance, "customer", None))
+        contract = attrs.get("contract", getattr(instance, "contract", None))
+        if contract and customer and contract.customer_id != customer.id:
+            raise serializers.ValidationError("Seçilen sözleşme müşteriyle uyumlu değil.")
+        if contract and contract.status == "DONE":
+            raise serializers.ValidationError("Tamamlanmış sözleşmeye yeni rapor bağlanamaz.")
         start_month = attrs.get("period_start_month", getattr(instance, "period_start_month", None))
         start_year = attrs.get("period_start_year", getattr(instance, "period_start_year", None))
         end_month = attrs.get("period_end_month", getattr(instance, "period_end_month", None))
@@ -238,6 +250,7 @@ class ReportSerializer(serializers.ModelSerializer):
         if instance:
             locked_fields = [
                 "customer",
+                "contract",
                 "report_type",
                 "year",
                 "type_cumulative",
