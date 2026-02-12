@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { changePassword, resolveAdminBase, getSettings, updateSettings, updateCounter, me, resolveApiBase } from "@/lib/api";
+import { changePassword, resolveAdminBase, getSettings, updateSettings, updateCounter, me, resolveApiBase, getYearLocks, setYearLock } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { clearTokens } from "@/lib/auth";
 
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
 
   const [workingYear, setWorkingYear] = useState<number | null>(null);
   const [counterYear, setCounterYear] = useState("2025");
@@ -22,6 +23,8 @@ export default function SettingsPage() {
   const [reportGlobalCounter, setReportGlobalCounter] = useState("");
   const [reportYearCounter, setReportYearCounter] = useState("");
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
+  const [yearLocks, setYearLocks] = useState<Array<{ year: number; is_locked: boolean }>>([]);
+  const [lockYear, setLockYear] = useState(String(new Date().getFullYear()));
 
   const years = useMemo(() => {
     const now = new Date().getFullYear();
@@ -35,9 +38,11 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [settings, meInfo] = await Promise.all([getSettings(), me()]);
+        const [settings, meInfo, locks] = await Promise.all([getSettings(), me(), getYearLocks().catch(() => [])]);
         setWorkingYear(settings.working_year);
         setIsStaff(Boolean(meInfo?.is_staff));
+        setIsSuperuser(Boolean(meInfo?.is_superuser));
+        setYearLocks(locks.map((l) => ({ year: l.year, is_locked: l.is_locked })));
       } catch {
         // ignore
       }
@@ -137,6 +142,20 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSetYearLock(isLocked: boolean) {
+    setAdminNotice(null);
+    if (!isSuperuser) return;
+    try {
+      await setYearLock(Number(lockYear), isLocked);
+      const locks = await getYearLocks();
+      setYearLocks(locks.map((l) => ({ year: l.year, is_locked: l.is_locked })));
+      setAdminNotice(isLocked ? "Yıl kilitlendi." : "Yıl kilidi açıldı.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setAdminNotice(`Yıl kilidi değiştirilemedi: ${msg}`);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -176,6 +195,32 @@ export default function SettingsPage() {
             </select>
           </div>
           <Button onClick={handleSaveSettings}>Kaydet</Button>
+        </div>
+      ) : null}
+
+      {isSuperuser ? (
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
+          <div className="text-sm text-ink/60">Yıl Kilidi (Sadece Admin)</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+              value={lockYear}
+              onChange={(e) => setLockYear(e.target.value)}
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={() => handleSetYearLock(true)}>Yılı Kilitle</Button>
+            <Button variant="outline" onClick={() => handleSetYearLock(false)}>Kilidi Aç</Button>
+          </div>
+          <div className="text-sm text-ink/70">
+            {yearLocks.length === 0
+              ? "Kilitli yıl yok."
+              : `Kilitli yıllar: ${yearLocks.filter((y) => y.is_locked).map((y) => y.year).join(", ") || "yok"}`}
+          </div>
         </div>
       ) : null}
 

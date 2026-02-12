@@ -24,6 +24,8 @@ from .models import (
     DocumentCounter,
     ReportCounterGlobal,
     ReportCounterYearAll,
+    YearLock,
+    year_is_locked,
     next_document_number,
     next_report_number,
 )
@@ -35,6 +37,7 @@ from .serializers import (
     ContractJobSerializer,
     ContractSerializer,
     AppSettingSerializer,
+    YearLockSerializer,
 )
 from .tasks import process_contract_job
 from .contract_parser import parse_contract_text
@@ -162,12 +165,63 @@ class DocumentViewSet(AuditViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        doc_type = data.get("doc_type")
         year = int(data.get("year"))
+        if year_is_locked(year):
+            return Response({"error": f"{year} yılı kilitli. Evrak eklenemez."}, status=400)
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        instance_year = serializer.instance.year
+        if year_is_locked(instance_year):
+            raise PermissionDenied(f"{instance_year} yılı kilitli. Evrak güncellenemez.")
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        actor = _actor(self.request)
+        if not actor or not actor.is_superuser:
+            raise PermissionDenied("Evrak silme sadece admin için izinlidir.")
+        if year_is_locked(instance.year):
+            raise PermissionDenied(f"{instance.year} yılı kilitli. Evrak silinemez.")
+
+        max_serial = (
+            Document.objects.filter(
+                doc_type=instance.doc_type,
+                year=instance.year,
+                is_archived=False,
+            )
+            .order_by("-serial")
+            .values_list("serial", flat=True)
+            .first()
+        )
+        if max_serial != instance.serial:
+            raise PermissionDenied("Sadece en son numaralı evrak silinebilir.")
+
+        deleted_serial = instance.serial
+        doc_type = instance.doc_type
+        year = instance.year
+        pk = instance.pk
+        instance.delete()
+        AuditLog.objects.create(
+            model="Document",
+            object_id=str(pk),
+            action="archive",
+            actor=actor,
+        )
+
+        prev_serial = (
+            Document.objects.filter(doc_type=doc_type, year=year, is_archived=False)
+            .order_by("-serial")
+            .values_list("serial", flat=True)
+            .first()
+            or 0
+        )
+        counter, _ = DocumentCounter.objects.get_or_create(doc_type=doc_type, year=year)
+        if counter.last_serial >= deleted_serial:
+            counter.last_serial = prev_serial
+            counter.save()
 
 
 class ReportViewSet(AuditViewSet):
@@ -186,8 +240,9 @@ class ReportViewSet(AuditViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        report_type = data.get("report_type")
         year = int(data.get("year"))
+        if year_is_locked(year):
+            return Response({"error": f"{year} yılı kilitli. Rapor eklenemez."}, status=400)
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -195,6 +250,9 @@ class ReportViewSet(AuditViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_update(self, serializer):
+        instance_year = serializer.instance.year
+        if year_is_locked(instance_year):
+            raise PermissionDenied(f"{instance_year} yılı kilitli. Rapor güncellenemez.")
         old_contract_id = serializer.instance.contract_id
         super().perform_update(serializer)
         new_contract_id = serializer.instance.contract_id
@@ -202,8 +260,63 @@ class ReportViewSet(AuditViewSet):
         _sync_contract_status(new_contract_id)
 
     def perform_destroy(self, instance):
+        actor = _actor(self.request)
+        if not actor or not actor.is_superuser:
+            raise PermissionDenied("Rapor silme sadece admin için izinlidir.")
+        if year_is_locked(instance.year):
+            raise PermissionDenied(f"{instance.year} yılı kilitli. Rapor silinemez.")
+
+        max_year_serial = (
+            Report.objects.filter(year=instance.year, is_archived=False)
+            .order_by("-year_serial_all")
+            .values_list("year_serial_all", flat=True)
+            .first()
+        )
+        max_global_serial = (
+            Report.objects.filter(is_archived=False)
+            .order_by("-type_cumulative")
+            .values_list("type_cumulative", flat=True)
+            .first()
+        )
+        if max_year_serial != instance.year_serial_all or max_global_serial != instance.type_cumulative:
+            raise PermissionDenied("Sadece en son numaralı rapor silinebilir.")
+
         contract_id = instance.contract_id
-        super().perform_destroy(instance)
+        deleted_type_cum = instance.type_cumulative
+        deleted_year_serial = instance.year_serial_all
+        year = instance.year
+        pk = instance.pk
+        instance.delete()
+        AuditLog.objects.create(
+            model="Report",
+            object_id=str(pk),
+            action="archive",
+            actor=actor,
+        )
+
+        prev_year_serial = (
+            Report.objects.filter(year=year, is_archived=False)
+            .order_by("-year_serial_all")
+            .values_list("year_serial_all", flat=True)
+            .first()
+            or 0
+        )
+        year_counter, _ = ReportCounterYearAll.objects.get_or_create(year=year)
+        if year_counter.last_serial >= deleted_year_serial:
+            year_counter.last_serial = prev_year_serial
+            year_counter.save()
+
+        prev_global = (
+            Report.objects.filter(is_archived=False)
+            .order_by("-type_cumulative")
+            .values_list("type_cumulative", flat=True)
+            .first()
+            or 0
+        )
+        global_counter, _ = ReportCounterGlobal.objects.get_or_create(id=1)
+        if global_counter.last_serial >= deleted_type_cum:
+            global_counter.last_serial = prev_global
+            global_counter.save()
         _sync_contract_status(contract_id)
 
 
@@ -457,6 +570,8 @@ class CounterAdminViewSet(viewsets.ViewSet):
         kind = request.data.get("kind")
         if kind == "report_global":
             year = int(request.data.get("year") or 0)
+            if year and year_is_locked(year):
+                return Response({"error": f"{year} yılı kilitli. Sayaç değiştirilemez."}, status=400)
             if year and year > 2026:
                 return Response({"error": "2027 ve sonrası için numaratör değiştirilemez."}, status=400)
             if year == 2026 and Report.objects.filter(year=2026).exists():
@@ -468,6 +583,8 @@ class CounterAdminViewSet(viewsets.ViewSet):
             return Response({"status": "ok"})
         if kind == "report_year":
             year = int(request.data.get("year"))
+            if year_is_locked(year):
+                return Response({"error": f"{year} yılı kilitli. Sayaç değiştirilemez."}, status=400)
             if year > 2025:
                 return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
             value = int(request.data.get("last_serial", 0))
@@ -477,6 +594,8 @@ class CounterAdminViewSet(viewsets.ViewSet):
             return Response({"status": "ok"})
         if kind == "document":
             year = int(request.data.get("year"))
+            if year_is_locked(year):
+                return Response({"error": f"{year} yılı kilitli. Sayaç değiştirilemez."}, status=400)
             if year > 2025:
                 return Response({"error": "2026 ve sonrası için numaratör değiştirilemez."}, status=400)
             doc_type = request.data.get("doc_type")
@@ -486,6 +605,30 @@ class CounterAdminViewSet(viewsets.ViewSet):
             obj.save()
             return Response({"status": "ok"})
         return Response({"error": "Geçersiz istek."}, status=400)
+
+
+class YearLockViewSet(viewsets.ViewSet):
+    def list(self, request):
+        rows = YearLock.objects.all().order_by("-year")
+        return Response(YearLockSerializer(rows, many=True).data)
+
+    def create(self, request):
+        user = _actor(request)
+        if not user or not user.is_superuser:
+            raise PermissionDenied("Yıl kilidi sadece admin tarafından değiştirilebilir.")
+        year = int(request.data.get("year"))
+        raw_lock = request.data.get("is_locked")
+        is_locked = str(raw_lock).lower() in ("1", "true", "yes", "on")
+        obj, _ = YearLock.objects.get_or_create(year=year)
+        obj.is_locked = is_locked
+        if is_locked:
+            obj.locked_at = timezone.now()
+            obj.locked_by = user
+        else:
+            obj.locked_at = None
+            obj.locked_by = None
+        obj.save()
+        return Response(YearLockSerializer(obj).data)
 
 
 @api_view(["GET"])

@@ -9,6 +9,7 @@ from .models import (
     DocumentCounter,
     ReportCounterYearAll,
     ReportCounterTypeCum,
+    YearLock,
 )
 
 
@@ -72,6 +73,7 @@ class ContractJobAdmin(AuditAdmin):
 admin.site.register(DocumentCounter)
 admin.site.register(ReportCounterYearAll)
 admin.site.register(ReportCounterTypeCum)
+admin.site.register(YearLock)
 
 admin.site.site_header = "YMM Otomasyon"
 admin.site.site_title = "YMM Otomasyon"

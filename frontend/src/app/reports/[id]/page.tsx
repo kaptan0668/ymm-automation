@@ -51,7 +51,7 @@ export default function ReportDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [isStaff, setIsStaff] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
 
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
@@ -78,7 +78,7 @@ export default function ReportDetailPage() {
         ]);
         setRep(r);
         setFiles(f);
-        setIsStaff(Boolean(meInfo?.is_staff));
+        setIsSuperuser(Boolean(meInfo?.is_superuser));
         setRecipient(r.recipient || "");
         setSubject(r.subject || "");
         setDescription(r.description || "");
@@ -360,7 +360,7 @@ export default function ReportDetailPage() {
                 </a>
                 <div className="mt-2 flex items-center justify-between text-xs text-ink/50">
                   <span>İndir</span>
-                  {isStaff ? (
+                  {isSuperuser ? (
                     <button className="text-xs text-red-600" onClick={() => handleDeleteFile(f.id)}>
                       Sil
                     </button>

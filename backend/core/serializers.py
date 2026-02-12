@@ -16,6 +16,8 @@ from .models import (
     DocumentCounter,
     ReportCounterGlobal,
     ReportCounterYearAll,
+    YearLock,
+    year_is_locked,
 )
 
 
@@ -143,6 +145,8 @@ class DocumentSerializer(serializers.ModelSerializer):
         setting = AppSetting.objects.first() or AppSetting.objects.create()
         if value.year != setting.working_year:
             raise serializers.ValidationError(f"Sadece çalışma yılı ({setting.working_year}) için tarih girebilirsiniz.")
+        if year_is_locked(value.year):
+            raise serializers.ValidationError(f"{value.year} yılı kilitli olduğu için evrak değiştirilemez.")
         user = getattr(self.context.get("request"), "user", None)
         if user and user.is_staff:
             return value
@@ -153,6 +157,9 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        effective_year = attrs.get("year", getattr(instance, "year", None))
+        if effective_year and year_is_locked(effective_year):
+            raise serializers.ValidationError(f"{effective_year} yılı kilitli olduğu için evrak değiştirilemez.")
         if not instance:
             received_date = attrs.get("received_date")
             doc_type = attrs.get("doc_type")
@@ -238,6 +245,8 @@ class ReportSerializer(serializers.ModelSerializer):
         setting = AppSetting.objects.first() or AppSetting.objects.create()
         if value.year != setting.working_year:
             raise serializers.ValidationError(f"Sadece çalışma yılı ({setting.working_year}) için tarih girebilirsiniz.")
+        if year_is_locked(value.year):
+            raise serializers.ValidationError(f"{value.year} yılı kilitli olduğu için rapor değiştirilemez.")
         user = getattr(self.context.get("request"), "user", None)
         if user and user.is_staff:
             return value
@@ -248,6 +257,9 @@ class ReportSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        effective_year = attrs.get("year", getattr(instance, "year", None))
+        if effective_year and year_is_locked(effective_year):
+            raise serializers.ValidationError(f"{effective_year} yılı kilitli olduğu için rapor değiştirilemez.")
         if not instance:
             received_date = attrs.get("received_date")
             year = attrs.get("year")
@@ -361,6 +373,12 @@ class ContractSerializer(serializers.ModelSerializer):
 class AppSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppSetting
+        fields = "__all__"
+
+
+class YearLockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = YearLock
         fields = "__all__"
 
 

@@ -84,6 +84,7 @@ export default function ReportsPage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [isStaff, setIsStaff] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
 
   const [filterText, setFilterText] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
@@ -103,6 +104,7 @@ export default function ReportsPage() {
       setItems(reps);
       setCustomers(custs);
       setIsStaff(Boolean(meInfo?.is_staff));
+      setIsSuperuser(Boolean(meInfo?.is_superuser));
       if (settings) {
         setWorkingYear(settings.working_year);
         const y = String(settings.working_year);
@@ -562,7 +564,7 @@ export default function ReportsPage() {
                 <th className="px-4 py-3 font-medium">Durum</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
                 <th className="px-4 py-3 font-medium">Düzenle</th>
-                {isStaff ? <th className="px-4 py-3 font-medium">Sil</th> : null}
+                {isSuperuser ? <th className="px-4 py-3 font-medium">Sil</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -620,7 +622,7 @@ export default function ReportsPage() {
                       Düzenle
                     </Link>
                   </td>
-                  {isStaff ? (
+                  {isSuperuser ? (
                     <td className="px-4 py-3">
                       <button className="text-red-600" onClick={() => handleDelete(item.id)}>Sil</button>
                     </td>

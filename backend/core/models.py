@@ -148,6 +148,24 @@ class AppSetting(models.Model):
         verbose_name = "Uygulama Ayarı"
         verbose_name_plural = "Uygulama Ayarları"
 
+
+class YearLock(models.Model):
+    year = models.IntegerField(unique=True, verbose_name="Yıl")
+    is_locked = models.BooleanField(default=False, verbose_name="Kilitli mi")
+    locked_at = models.DateTimeField(null=True, blank=True, verbose_name="Kilit zamanı")
+    locked_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Kilitleyen kullanıcı",
+    )
+
+    class Meta:
+        verbose_name = "Yıl Kilidi"
+        verbose_name_plural = "Yıl Kilitleri"
+
 class Document(AuditBase):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Müşteri")
     contract = models.ForeignKey(
@@ -377,6 +395,11 @@ class Contract(AuditBase):
     class Meta:
         verbose_name = "Sözleşme"
         verbose_name_plural = "Sözleşmeler"
+
+
+def year_is_locked(year: int) -> bool:
+    lock = YearLock.objects.filter(year=year).only("is_locked").first()
+    return bool(lock and lock.is_locked)
 
 
 def next_document_number(doc_type: str, year: int) -> tuple[str, int]:

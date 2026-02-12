@@ -84,7 +84,7 @@ export async function login(username: string, password: string) {
 }
 
 export async function me() {
-  return apiFetch<{ authenticated: boolean; username?: string; is_staff?: boolean }>(
+  return apiFetch<{ authenticated: boolean; username?: string; is_staff?: boolean; is_superuser?: boolean }>(
     "/api/auth/me/"
   );
 }
@@ -116,5 +116,18 @@ export async function updateCounter(data: {
   return apiFetch<{ status: string }>("/api/admin-counters/", {
     method: "POST",
     body: JSON.stringify(data)
+  });
+}
+
+export async function getYearLocks() {
+  return apiFetch<Array<{ id: number; year: number; is_locked: boolean; locked_at?: string | null }>>(
+    "/api/year-locks/"
+  );
+}
+
+export async function setYearLock(year: number, is_locked: boolean) {
+  return apiFetch<{ id: number; year: number; is_locked: boolean }>("/api/year-locks/", {
+    method: "POST",
+    body: JSON.stringify({ year, is_locked })
   });
 }

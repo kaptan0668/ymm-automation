@@ -13,6 +13,7 @@ from .views import (
     ContractViewSet,
     SettingsViewSet,
     CounterAdminViewSet,
+    YearLockViewSet,
     backup,
 )
 
@@ -25,6 +26,7 @@ router.register(r"contract-jobs", ContractJobViewSet)
 router.register(r"contracts", ContractViewSet)
 router.register(r"settings", SettingsViewSet, basename="settings")
 router.register(r"admin-counters", CounterAdminViewSet, basename="admin-counters")
+router.register(r"year-locks", YearLockViewSet, basename="year-locks")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -43,6 +45,7 @@ def me(request):
             "authenticated": True,
             "username": user.username,
             "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
         }
     )
 
