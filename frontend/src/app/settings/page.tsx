@@ -13,6 +13,8 @@ export default function SettingsPage() {
   const [newPassword2, setNewPassword2] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
   const [isStaff, setIsStaff] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
 
@@ -78,14 +80,19 @@ export default function SettingsPage() {
   }
 
   async function handleSaveSettings() {
-    setAdminNotice(null);
+    setSettingsNotice(null);
     if (!isStaff || workingYear === null) return;
     try {
+      setSavingSettings(true);
       await updateSettings({ working_year: workingYear });
-      setAdminNotice("Ayarlar kaydedildi.");
+      localStorage.setItem("working_year", String(workingYear));
+      window.dispatchEvent(new Event("working-year-changed"));
+      setSettingsNotice(`Çalışma yılı kaydedildi: ${workingYear}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setAdminNotice(`Kaydedilemedi: ${msg}`);
+      setSettingsNotice(`Kaydedilemedi: ${msg}`);
+    } finally {
+      setSavingSettings(false);
     }
   }
 
@@ -181,6 +188,7 @@ export default function SettingsPage() {
       {isStaff ? (
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
           <div className="text-sm text-ink/60">Çalışma yılı</div>
+          <div className="text-xs text-ink/50">Kayıtlı çalışma yılı: {workingYear ?? "-"}</div>
           <div className="grid gap-3 md:grid-cols-1">
             <select
               className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -194,7 +202,10 @@ export default function SettingsPage() {
               ))}
             </select>
           </div>
-          <Button onClick={handleSaveSettings}>Kaydet</Button>
+          <Button onClick={handleSaveSettings} disabled={savingSettings}>
+            {savingSettings ? "Kaydediliyor..." : "Kaydet"}
+          </Button>
+          {settingsNotice ? <div className="text-sm text-ink/70">{settingsNotice}</div> : null}
         </div>
       ) : null}
 

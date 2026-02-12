@@ -20,9 +20,30 @@ export default function Sidebar() {
   const [workingYear, setWorkingYear] = useState<number | null>(null);
 
   useEffect(() => {
+    const fromCache = Number(localStorage.getItem("working_year") || "");
+    if (Number.isFinite(fromCache) && fromCache > 2000) {
+      setWorkingYear(fromCache);
+    }
     getSettings()
-      .then((s) => setWorkingYear(s.working_year))
+      .then((s) => {
+        setWorkingYear(s.working_year);
+        localStorage.setItem("working_year", String(s.working_year));
+      })
       .catch(() => setWorkingYear(null));
+
+    const onYearChanged = () => {
+      const y = Number(localStorage.getItem("working_year") || "");
+      if (Number.isFinite(y) && y > 2000) {
+        setWorkingYear(y);
+      }
+    };
+
+    window.addEventListener("working-year-changed", onYearChanged as EventListener);
+    window.addEventListener("storage", onYearChanged);
+    return () => {
+      window.removeEventListener("working-year-changed", onYearChanged as EventListener);
+      window.removeEventListener("storage", onYearChanged);
+    };
   }, []);
 
   function handleLogout() {

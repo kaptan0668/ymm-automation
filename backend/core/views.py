@@ -80,10 +80,9 @@ def _sync_contract_status(contract_id: int | None):
     if not contract:
         return
     linked_reports = Report.objects.filter(contract_id=contract_id, is_archived=False)
-    if linked_reports.exists() and not linked_reports.exclude(status="DONE").exists():
-        new_status = "DONE"
-    else:
-        new_status = "OPEN"
+    # İş kuralı: Sözleşmeye ilk rapor bağlandığında sözleşme tamamlanır.
+    # Bağlı rapor kalmazsa sözleşme tekrar açık olur.
+    new_status = "DONE" if linked_reports.exists() else "OPEN"
     if contract.status != new_status:
         contract.status = new_status
         contract.save(update_fields=["status", "updated_at"])
