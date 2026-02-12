@@ -440,7 +440,10 @@ class SettingsViewSet(viewsets.ViewSet):
         if not user or not user.is_staff:
             raise PermissionDenied("Sadece admin ayarları güncelleyebilir.")
         obj = _get_settings()
-        serializer = AppSettingSerializer(obj, data=request.data, partial=True)
+        data = request.data.copy()
+        if data.get("working_year") and not data.get("reference_year"):
+            data["reference_year"] = data.get("working_year")
+        serializer = AppSettingSerializer(obj, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

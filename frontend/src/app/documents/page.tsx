@@ -56,7 +56,6 @@ export default function DocumentsPage() {
   const [docType, setDocType] = useState("GLE");
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [contractId, setContractId] = useState("");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [workingYear, setWorkingYear] = useState<number | null>(null);
   const [receivedDate, setReceivedDate] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
@@ -100,7 +99,6 @@ export default function DocumentsPage() {
       setIsStaff(Boolean(meInfo?.is_staff));
       if (settings) {
         setWorkingYear(settings.working_year);
-        setYear(String(settings.working_year));
       }
       setError(null);
     } catch (err) {
@@ -143,7 +141,8 @@ export default function DocumentsPage() {
     return m;
   }, [customers]);
 
-  const manualAllowed = isStaff && year !== "" && Number(year) <= 2025;
+  const entryYear = workingYear ?? new Date().getFullYear();
+  const manualAllowed = isStaff && entryYear <= 2025;
 
   const filtered = useMemo(() => {
     let rows = items;
@@ -183,7 +182,7 @@ export default function DocumentsPage() {
           customer: Number(customerId),
           contract: contractId ? Number(contractId) : null,
           doc_type: docType,
-          year: Number(year),
+          year: entryYear,
           received_date: receivedDate || null,
           reference_no: referenceNo || null,
           sender: sender || null,
@@ -218,7 +217,6 @@ export default function DocumentsPage() {
 
       setCustomerId("");
       setContractId("");
-      setYear(String(workingYear ?? new Date().getFullYear()));
       setReferenceNo("");
       setSender("");
       setRecipient("");
@@ -312,7 +310,6 @@ export default function DocumentsPage() {
             </option>
           ))}
         </select>
-        <Input placeholder="Yıl" value={year} onChange={(e) => setYear(e.target.value)} />
 
         <Input type="date" placeholder="Tarih" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} />
         <Input placeholder="Harici sayı" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
@@ -404,7 +401,7 @@ export default function DocumentsPage() {
           </div>
         ) : null}
 
-        <Button type="submit" disabled={!token || saving || !customerId || !year || !receivedDate}>
+        <Button type="submit" disabled={!token || saving || !customerId || !receivedDate}>
           {saving ? "Kaydediliyor..." : "Evrak Ekle"}
         </Button>
       </form>

@@ -16,7 +16,6 @@ export default function SettingsPage() {
   const [isStaff, setIsStaff] = useState(false);
 
   const [workingYear, setWorkingYear] = useState<number | null>(null);
-  const [referenceYear, setReferenceYear] = useState<number | null>(null);
   const [counterYear, setCounterYear] = useState("2025");
   const [docType, setDocType] = useState("GLE");
   const [docCounter, setDocCounter] = useState("");
@@ -38,7 +37,6 @@ export default function SettingsPage() {
       try {
         const [settings, meInfo] = await Promise.all([getSettings(), me()]);
         setWorkingYear(settings.working_year);
-        setReferenceYear(settings.reference_year);
         setIsStaff(Boolean(meInfo?.is_staff));
       } catch {
         // ignore
@@ -76,9 +74,9 @@ export default function SettingsPage() {
 
   async function handleSaveSettings() {
     setAdminNotice(null);
-    if (!isStaff || workingYear === null || referenceYear === null) return;
+    if (!isStaff || workingYear === null) return;
     try {
-      await updateSettings({ working_year: workingYear, reference_year: referenceYear });
+      await updateSettings({ working_year: workingYear });
       setAdminNotice("Ayarlar kaydedildi.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -163,23 +161,12 @@ export default function SettingsPage() {
 
       {isStaff ? (
         <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
-          <div className="text-sm text-ink/60">Çalışma yılı ve referans yılı</div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="text-sm text-ink/60">Çalışma yılı</div>
+          <div className="grid gap-3 md:grid-cols-1">
             <select
               className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
               value={workingYear ?? ""}
               onChange={(e) => setWorkingYear(Number(e.target.value))}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
-              className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-              value={referenceYear ?? ""}
-              onChange={(e) => setReferenceYear(Number(e.target.value))}
             >
               {years.map((y) => (
                 <option key={y} value={y}>

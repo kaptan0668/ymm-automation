@@ -59,7 +59,6 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("TT");
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [contractId, setContractId] = useState("");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [workingYear, setWorkingYear] = useState<number | null>(null);
   const [receivedDate, setReceivedDate] = useState("");
   const [periodStartMonth, setPeriodStartMonth] = useState("");
@@ -105,9 +104,8 @@ export default function ReportsPage() {
       setCustomers(custs);
       setIsStaff(Boolean(meInfo?.is_staff));
       if (settings) {
-        const y = String(settings.working_year);
         setWorkingYear(settings.working_year);
-        setYear(y);
+        const y = String(settings.working_year);
         setPeriodStartYear(y);
         setPeriodEndYear(y);
       }
@@ -161,7 +159,8 @@ export default function ReportsPage() {
     return m;
   }, [customers]);
 
-  const manualAllowed = isStaff && year !== "" && Number(year) <= 2025;
+  const entryYear = workingYear ?? new Date().getFullYear();
+  const manualAllowed = isStaff && entryYear <= 2025;
 
   const filtered = useMemo(() => {
     let rows = items;
@@ -201,7 +200,7 @@ export default function ReportsPage() {
           customer: Number(customerId),
           contract: contractId ? Number(contractId) : null,
           report_type: reportType,
-          year: Number(year),
+          year: entryYear,
           received_date: receivedDate || null,
           recipient: recipient || null,
           subject: subject || null,
@@ -335,17 +334,6 @@ export default function ReportsPage() {
           {REPORT_TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
-            </option>
-          ))}
-        </select>
-        <select
-          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
             </option>
           ))}
         </select>
@@ -500,7 +488,6 @@ export default function ReportsPage() {
             !token ||
             saving ||
             !customerId ||
-            !year ||
             !receivedDate ||
             !periodStartMonth ||
             !periodStartYear ||

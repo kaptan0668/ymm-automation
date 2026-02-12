@@ -8,22 +8,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type Customer = { id: number; name: string };
 type AppSettings = { working_year: number; reference_year: number };
-type DocumentRow = {
-  id: number;
-  doc_no: string;
-  year?: number;
-  subject?: string;
-  created_at?: string;
-  status?: string;
-};
-type ReportRow = {
-  id: number;
-  report_no: string;
-  year?: number;
-  subject?: string;
-  created_at?: string;
-  status?: string;
-};
+type DocumentRow = { id: number; doc_no: string; year?: number; subject?: string; created_at?: string; status?: string };
+type ReportRow = { id: number; report_no: string; year?: number; subject?: string; created_at?: string; status?: string };
 
 export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -67,52 +53,31 @@ export default function Dashboard() {
 
   const years = useMemo(() => {
     const ys = new Set<number>();
-    if (settings?.reference_year) ys.add(settings.reference_year);
     if (settings?.working_year) ys.add(settings.working_year);
-    documents.forEach((d) => {
-      if (d.year) ys.add(d.year);
-    });
-    reports.forEach((r) => {
-      if (r.year) ys.add(r.year);
-    });
+    documents.forEach((d) => d.year && ys.add(d.year));
+    reports.forEach((r) => r.year && ys.add(r.year));
     ys.add(new Date().getFullYear());
     return Array.from(ys).sort((a, b) => b - a);
   }, [settings, documents, reports]);
 
   useEffect(() => {
-    if (settings?.reference_year && !years.includes(selectedYear)) {
-      setSelectedYear(settings.reference_year);
+    if (settings?.working_year && !years.includes(selectedYear)) {
+      setSelectedYear(settings.working_year);
     }
   }, [settings, years, selectedYear]);
 
-  const yearDocuments = useMemo(
-    () => documents.filter((d) => (d.year ?? 0) === selectedYear),
-    [documents, selectedYear]
-  );
-  const yearReports = useMemo(
-    () => reports.filter((r) => (r.year ?? 0) === selectedYear),
-    [reports, selectedYear]
-  );
+  const yearDocuments = useMemo(() => documents.filter((d) => (d.year ?? 0) === selectedYear), [documents, selectedYear]);
+  const yearReports = useMemo(() => reports.filter((r) => (r.year ?? 0) === selectedYear), [reports, selectedYear]);
 
   const openDocs = yearDocuments.filter((d) => d.status !== "DONE").length;
-  const openReports = yearReports.filter((r) => r.status !== "DONE").length;
   const doneDocs = yearDocuments.filter((d) => d.status === "DONE").length;
+  const openReports = yearReports.filter((r) => r.status !== "DONE").length;
   const doneReports = yearReports.filter((r) => r.status === "DONE").length;
 
   const recentActivity = useMemo(() => {
     const rows = [
-      ...yearDocuments.map((d) => ({
-        id: `doc-${d.id}`,
-        title: d.doc_no,
-        subtitle: d.subject || "Evrak",
-        date: d.created_at
-      })),
-      ...yearReports.map((r) => ({
-        id: `rep-${r.id}`,
-        title: r.report_no,
-        subtitle: r.subject || "Rapor",
-        date: r.created_at
-      }))
+      ...yearDocuments.map((d) => ({ id: `doc-${d.id}`, title: d.doc_no, subtitle: d.subject || "Evrak", date: d.created_at })),
+      ...yearReports.map((r) => ({ id: `rep-${r.id}`, title: r.report_no, subtitle: r.subject || "Rapor", date: r.created_at }))
     ];
     return rows
       .filter((r) => r.date)
@@ -186,11 +151,11 @@ export default function Dashboard() {
 
       <Card>
         <CardHeader>
-          <div className="text-sm text-ink/60">Yıl Bilgileri</div>
+          <div className="text-sm text-ink/60">Yıl Bilgisi</div>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-ink/70">
-            Çalışma yılı: <b>{settings?.working_year ?? "-"}</b> | Referans yılı: <b>{settings?.reference_year ?? "-"}</b> | Seçili gösterge yılı: <b>{selectedYear}</b>
+            Çalışma yılı: <b>{settings?.working_year ?? "-"}</b> | Seçili gösterge yılı: <b>{selectedYear}</b>
           </div>
         </CardContent>
       </Card>
@@ -217,9 +182,7 @@ export default function Dashboard() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="text-sm text-ink/60">Son Hareketler</div>
-              <Button variant="outline" size="sm" onClick={load}>
-                Yenile
-              </Button>
+              <Button variant="outline" size="sm" onClick={load}>Yenile</Button>
             </div>
             <div className="mt-1 text-xs text-ink/50">
               Son güncelleme: {lastUpdated ? lastUpdated.toLocaleTimeString("tr-TR") : "-"} | Yıl: {selectedYear}
@@ -249,3 +212,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

@@ -140,6 +140,9 @@ class DocumentSerializer(serializers.ModelSerializer):
     def validate_received_date(self, value):
         if value is None:
             raise serializers.ValidationError("Tarih zorunludur.")
+        setting = AppSetting.objects.first() or AppSetting.objects.create()
+        if value.year != setting.working_year:
+            raise serializers.ValidationError(f"Sadece çalışma yılı ({setting.working_year}) için tarih girebilirsiniz.")
         user = getattr(self.context.get("request"), "user", None)
         if user and user.is_staff:
             return value
@@ -150,6 +153,21 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        if not instance:
+            received_date = attrs.get("received_date")
+            doc_type = attrs.get("doc_type")
+            year = attrs.get("year")
+            if received_date and doc_type and year:
+                latest = (
+                    Document.objects.filter(doc_type=doc_type, year=year, is_archived=False)
+                    .exclude(received_date__isnull=True)
+                    .order_by("-received_date", "-serial")
+                    .first()
+                )
+                if latest and latest.received_date and received_date < latest.received_date:
+                    raise serializers.ValidationError(
+                        "Daha eski tarihli evrak girişi numara sırasını bozar. Önceki tarihe yeni numara verilemez."
+                    )
         customer = attrs.get("customer", getattr(instance, "customer", None))
         contract = attrs.get("contract", getattr(instance, "contract", None))
         if contract and customer and contract.customer_id != customer.id:
@@ -217,6 +235,9 @@ class ReportSerializer(serializers.ModelSerializer):
     def validate_received_date(self, value):
         if value is None:
             raise serializers.ValidationError("Tarih zorunludur.")
+        setting = AppSetting.objects.first() or AppSetting.objects.create()
+        if value.year != setting.working_year:
+            raise serializers.ValidationError(f"Sadece çalışma yılı ({setting.working_year}) için tarih girebilirsiniz.")
         user = getattr(self.context.get("request"), "user", None)
         if user and user.is_staff:
             return value
@@ -227,6 +248,20 @@ class ReportSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
+        if not instance:
+            received_date = attrs.get("received_date")
+            year = attrs.get("year")
+            if received_date and year:
+                latest = (
+                    Report.objects.filter(year=year, is_archived=False)
+                    .exclude(received_date__isnull=True)
+                    .order_by("-received_date", "-year_serial_all")
+                    .first()
+                )
+                if latest and latest.received_date and received_date < latest.received_date:
+                    raise serializers.ValidationError(
+                        "Daha eski tarihli rapor girişi numara sırasını bozar. Önceki tarihe yeni numara verilemez."
+                    )
         customer = attrs.get("customer", getattr(instance, "customer", None))
         contract = attrs.get("contract", getattr(instance, "contract", None))
         if contract and customer and contract.customer_id != customer.id:
