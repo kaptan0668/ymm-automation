@@ -320,6 +320,7 @@ class File(AuditBase):
     content_type = models.CharField(max_length=128, verbose_name="İçerik türü")
     size = models.IntegerField(verbose_name="Boyut (byte)")
     url = models.URLField(verbose_name="URL")
+    note_scope = models.BooleanField(default=False, verbose_name="Not dosyası mı")
     document = models.ForeignKey(
         "Document",
         null=True,
@@ -335,6 +336,14 @@ class File(AuditBase):
         on_delete=models.CASCADE,
         related_name="files",
         verbose_name="Rapor",
+    )
+    contract = models.ForeignKey(
+        "Contract",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Sözleşme",
     )
     customer = models.ForeignKey(
         "Customer",

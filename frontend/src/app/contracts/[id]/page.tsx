@@ -56,6 +56,13 @@ type ReportRow = {
   status?: "OPEN" | "DONE";
 };
 
+type FileRow = {
+  id: number;
+  filename: string;
+  url: string;
+  signed_url?: string;
+};
+
 export default function ContractDetailPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -63,24 +70,28 @@ export default function ContractDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
   const [cardNote, setCardNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
+  const [noteFile, setNoteFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
         const c = await apiFetch<ContractRow>(`/api/contracts/${id}/`);
-        const [cust, docs, reps] = await Promise.all([
+        const [cust, docs, reps, nf] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${c.customer}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?contract=${c.id}`),
-          apiFetch<ReportRow[]>(`/api/reports/?contract=${c.id}`)
+          apiFetch<ReportRow[]>(`/api/reports/?contract=${c.id}`),
+          apiFetch<FileRow[]>(`/api/files/?contract=${c.id}&note_scope=1`)
         ]);
         setContract(c);
         setCustomer(cust);
         setDocuments(docs);
         setReports(reps);
+        setNoteFiles(nf);
         setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -108,6 +119,26 @@ export default function ContractDetailPage() {
     } finally {
       setNoteSaving(false);
     }
+  }
+
+  async function handleUploadNoteFile() {
+    if (!contract || !noteFile) return;
+    const fd = new FormData();
+    fd.append("file", noteFile);
+    fd.append("contract", String(contract.id));
+    fd.append("customer", String(contract.customer));
+    fd.append("note_scope", "1");
+    await apiUpload("/api/files/upload/", fd);
+    setNoteFile(null);
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?contract=${contract.id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
+  }
+
+  async function handleDeleteNoteFile(fileId: number) {
+    if (!confirm("Not dosyası silinsin mi?")) return;
+    await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?contract=${id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
   }
 
   const period = useMemo(() => {
@@ -184,7 +215,7 @@ export default function ContractDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+      <div className={`rounded-2xl border p-6 ${cardNote?.trim() || noteFiles.length > 0 ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
         <div className="text-sm font-semibold text-ink">Notlar</div>
         <textarea
           className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
@@ -192,12 +223,34 @@ export default function ContractDetailPage() {
           value={cardNote}
           onChange={(e) => setCardNote(e.target.value)}
         />
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
             {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
           </Button>
+          <input
+            type="file"
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
+          />
+          <Button variant="outline" onClick={handleUploadNoteFile} disabled={!noteFile}>
+            Not Dosyası Ekle
+          </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
+        {noteFiles.length > 0 ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {noteFiles.map((f) => (
+              <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
+                <a className="text-sm text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                  {f.filename}
+                </a>
+                <button className="text-xs text-red-600" onClick={() => handleDeleteNoteFile(f.id)}>
+                  Sil
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">

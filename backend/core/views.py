@@ -327,16 +327,23 @@ class FileViewSet(AuditViewSet):
         qs = super().get_queryset()
         document = self.request.query_params.get("document")
         report = self.request.query_params.get("report")
+        contract = self.request.query_params.get("contract")
         customer = self.request.query_params.get("customer")
         scope = self.request.query_params.get("scope")
+        note_scope = self.request.query_params.get("note_scope")
         if document:
             qs = qs.filter(document_id=document)
         if report:
             qs = qs.filter(report_id=report)
+        if contract:
+            qs = qs.filter(contract_id=contract)
         if customer:
             qs = qs.filter(customer_id=customer)
         if scope == "other":
-            qs = qs.filter(document__isnull=True, report__isnull=True)
+            qs = qs.filter(document__isnull=True, report__isnull=True, contract__isnull=True, note_scope=False)
+        if note_scope is not None:
+            is_note_scope = str(note_scope).lower() in ("1", "true", "yes", "on")
+            qs = qs.filter(note_scope=is_note_scope)
         return qs
 
     @action(detail=False, methods=["post"])
@@ -365,7 +372,10 @@ class FileViewSet(AuditViewSet):
 
         document_id = request.data.get("document")
         report_id = request.data.get("report")
+        contract_id = request.data.get("contract")
         customer_id = request.data.get("customer")
+        raw_note_scope = request.data.get("note_scope")
+        is_note_scope = str(raw_note_scope).lower() in ("1", "true", "yes", "on")
 
         if not customer_id and document_id:
             try:
@@ -377,6 +387,11 @@ class FileViewSet(AuditViewSet):
                 customer_id = Report.objects.get(id=report_id).customer_id
             except Report.DoesNotExist:
                 customer_id = None
+        if not customer_id and contract_id:
+            try:
+                customer_id = Contract.objects.get(id=contract_id).customer_id
+            except Contract.DoesNotExist:
+                customer_id = None
 
         display_name = (request.data.get("filename") or "").strip() or upload.name
         file_obj = File.objects.create(
@@ -384,8 +399,10 @@ class FileViewSet(AuditViewSet):
             content_type=upload.content_type or "application/octet-stream",
             size=upload.size,
             url=url,
+            note_scope=is_note_scope,
             document_id=document_id or None,
             report_id=report_id or None,
+            contract_id=contract_id or None,
             customer_id=customer_id or None,
             created_by=_actor(request),
             updated_by=_actor(request),

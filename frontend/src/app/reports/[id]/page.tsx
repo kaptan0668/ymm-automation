@@ -48,6 +48,7 @@ export default function ReportDetailPage() {
   const id = params?.id as string;
   const [rep, setRep] = useState<ReportRow | null>(null);
   const [files, setFiles] = useState<FileRow[]>([]);
+  const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,17 +72,20 @@ export default function ReportDetailPage() {
   const [cardNote, setCardNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
+  const [noteFile, setNoteFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [r, f, meInfo] = await Promise.all([
+        const [r, f, nf, meInfo] = await Promise.all([
           apiFetch<ReportRow>(`/api/reports/${id}/`),
-          apiFetch<FileRow[]>(`/api/files/?report=${id}`),
+          apiFetch<FileRow[]>(`/api/files/?report=${id}&note_scope=0`),
+          apiFetch<FileRow[]>(`/api/files/?report=${id}&note_scope=1`),
           me()
         ]);
         setRep(r);
         setFiles(f);
+        setNoteFiles(nf);
         setIsSuperuser(Boolean(meInfo?.is_superuser));
         setRecipient(r.recipient || "");
         setSubject(r.subject || "");
@@ -155,14 +159,14 @@ export default function ReportDetailPage() {
       await apiUpload("/api/files/upload/", fd);
     }
     setUploadFiles([]);
-    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?report=${rep.id}`);
+    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?report=${rep.id}&note_scope=0`);
     setFiles(updatedFiles);
   }
 
   async function handleDeleteFile(fileId: number) {
     if (!confirm("Dosya silinsin mi?")) return;
     await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
-    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?report=${id}`);
+    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?report=${id}&note_scope=0`);
     setFiles(updatedFiles);
   }
 
@@ -200,6 +204,25 @@ export default function ReportDetailPage() {
     } finally {
       setNoteSaving(false);
     }
+  }
+
+  async function handleUploadNoteFile() {
+    if (!rep || !noteFile) return;
+    const fd = new FormData();
+    fd.append("file", noteFile);
+    fd.append("report", String(rep.id));
+    fd.append("note_scope", "1");
+    await apiUpload("/api/files/upload/", fd);
+    setNoteFile(null);
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?report=${rep.id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
+  }
+
+  async function handleDeleteNoteFile(fileId: number) {
+    if (!confirm("Not dosyası silinsin mi?")) return;
+    await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?report=${id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
   }
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
@@ -344,7 +367,7 @@ export default function ReportDetailPage() {
         </form>
       ) : null}
 
-      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+      <div className={`rounded-2xl border p-6 ${cardNote?.trim() || noteFiles.length > 0 ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
         <div className="text-sm font-semibold text-ink">Notlar</div>
         <textarea
           className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
@@ -352,12 +375,36 @@ export default function ReportDetailPage() {
           value={cardNote}
           onChange={(e) => setCardNote(e.target.value)}
         />
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
             {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
           </Button>
+          <input
+            type="file"
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
+          />
+          <Button variant="outline" onClick={handleUploadNoteFile} disabled={!noteFile}>
+            Not Dosyası Ekle
+          </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
+        {noteFiles.length > 0 ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {noteFiles.map((f) => (
+              <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
+                <a className="text-sm text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                  {f.filename}
+                </a>
+                {isSuperuser ? (
+                  <button className="text-xs text-red-600" onClick={() => handleDeleteNoteFile(f.id)}>
+                    Sil
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">

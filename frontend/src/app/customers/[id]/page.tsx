@@ -81,6 +81,7 @@ export default function CustomerCardPage() {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
+  const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -110,15 +111,17 @@ export default function CustomerCardPage() {
 
   const [otherFile, setOtherFile] = useState<File | null>(null);
   const [otherFileName, setOtherFileName] = useState("");
+  const [noteFile, setNoteFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [c, d, r, f, contractItems, meInfo] = await Promise.all([
+        const [c, d, r, f, nf, contractItems, meInfo] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${id}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?customer=${id}`),
           apiFetch<ReportRow[]>(`/api/reports/?customer=${id}`),
           apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`),
+          apiFetch<FileRow[]>(`/api/files/?customer=${id}&note_scope=1`),
           apiFetch<ContractRow[]>(`/api/contracts/?customer=${id}`),
           me()
         ]);
@@ -126,6 +129,7 @@ export default function CustomerCardPage() {
         setDocs(d);
         setReports(r);
         setFiles(f);
+        setNoteFiles(nf);
         setContracts(contractItems);
         setIsStaff(Boolean(meInfo?.is_staff));
         setName(c.name || "");
@@ -230,6 +234,25 @@ export default function CustomerCardPage() {
     setFiles(updatedFiles);
   }
 
+  async function handleUploadNoteFile() {
+    if (!customer || !noteFile) return;
+    const fd = new FormData();
+    fd.append("file", noteFile);
+    fd.append("customer", String(customer.id));
+    fd.append("note_scope", "1");
+    await apiUpload("/api/files/upload/", fd);
+    setNoteFile(null);
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
+  }
+
+  async function handleDeleteNoteFile(fileId: number) {
+    if (!confirm("Not dosyası silinsin mi?")) return;
+    await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
+    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${id}&note_scope=1`);
+    setNoteFiles(updatedNoteFiles);
+  }
+
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!customer) return <div>Yükleniyor...</div>;
 
@@ -284,6 +307,46 @@ export default function CustomerCardPage() {
         </div>
       </div>
 
+      <div className={`rounded-2xl border p-6 ${cardNote?.trim() || noteFiles.length > 0 ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
+        <div className="text-sm font-semibold text-ink">Notlar</div>
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Müşteri kartı notu"
+          value={cardNote}
+          onChange={(e) => setCardNote(e.target.value)}
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
+            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          <input
+            type="file"
+            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+            onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
+          />
+          <Button variant="outline" onClick={handleUploadNoteFile} disabled={!noteFile}>
+            Not Dosyası Ekle
+          </Button>
+          {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
+        </div>
+        {noteFiles.length > 0 ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {noteFiles.map((f) => (
+              <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
+                <a className="text-sm text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                  {f.filename}
+                </a>
+                {isStaff ? (
+                  <button className="text-xs text-red-600" onClick={() => handleDeleteNoteFile(f.id)}>
+                    Sil
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="rounded-xl border border-ink/10 bg-haze p-4">
@@ -308,22 +371,6 @@ export default function CustomerCardPage() {
               {customer.identity_type === "TCKN" ? customer.tckn : customer.tax_no}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
-        <div className="text-sm font-semibold text-ink">Notlar</div>
-        <textarea
-          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
-          placeholder="Müşteri kartı notu"
-          value={cardNote}
-          onChange={(e) => setCardNote(e.target.value)}
-        />
-        <div className="mt-3 flex items-center gap-3">
-          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
-            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
-          </Button>
-          {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
       </div>
 
