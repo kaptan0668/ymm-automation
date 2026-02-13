@@ -97,6 +97,7 @@ class Customer(AuditBase):
     contact_person = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili kişi")
     contact_phone = models.CharField(max_length=64, null=True, blank=True, verbose_name="Yetkili telefon")
     contact_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Yetkili e-posta")
+    card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
 
     def __str__(self):
         return self.name
@@ -192,6 +193,7 @@ class Document(AuditBase):
     recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="Alıcı")
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
+    card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
@@ -264,6 +266,7 @@ class Report(AuditBase):
     recipient = models.CharField(max_length=255, null=True, blank=True, verbose_name="Alıcı")
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
+    card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
@@ -391,6 +394,7 @@ class Contract(AuditBase):
     content_type = models.CharField(max_length=128, null=True, blank=True, verbose_name="İçerik türü")
     size = models.IntegerField(null=True, blank=True, verbose_name="Boyut (byte)")
     file_url = models.URLField(null=True, blank=True, verbose_name="Dosya URL")
+    card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
 
     class Meta:
         verbose_name = "Sözleşme"
@@ -417,7 +421,7 @@ def next_document_number(doc_type: str, year: int) -> tuple[str, int]:
         counter.last_serial = max(counter.last_serial, max_existing_serial) + 1
         counter.save()
         serial = counter.last_serial
-        return f"YMM-{YMM_LICENSE_NO}-{doc_type}-{year}-{serial:03d}", serial
+        return f"YMM-{YMM_LICENSE_NO}/{doc_type}/{year}-{serial:03d}", serial
 
 
 def next_report_number(report_type: str, year: int) -> tuple[str, int, int]:

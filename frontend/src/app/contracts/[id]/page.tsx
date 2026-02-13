@@ -21,6 +21,7 @@ type ContractRow = {
   filename?: string;
   file_url?: string;
   signed_url?: string;
+  card_note?: string;
   customer: number;
 };
 
@@ -62,6 +63,9 @@ export default function ContractDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [cardNote, setCardNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteNotice, setNoteNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,6 +81,7 @@ export default function ContractDetailPage() {
         setCustomer(cust);
         setDocuments(docs);
         setReports(reps);
+        setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -84,6 +89,26 @@ export default function ContractDetailPage() {
     }
     load();
   }, [id]);
+
+  async function handleSaveCardNote() {
+    if (!contract) return;
+    setNoteSaving(true);
+    setNoteNotice(null);
+    try {
+      const updated = await apiFetch<ContractRow>(`/api/contracts/${contract.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ card_note: cardNote || null })
+      });
+      setContract(updated);
+      setCardNote(updated.card_note || "");
+      setNoteNotice("Not kaydedildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not kaydedilemedi: ${msg}`);
+    } finally {
+      setNoteSaving(false);
+    }
+  }
 
   const period = useMemo(() => {
     if (
@@ -156,6 +181,22 @@ export default function ContractDetailPage() {
             <div><b>E-posta:</b> {customer.email || "-"}</div>
             <div><b>Adres:</b> {customer.address || "-"}</div>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+        <div className="text-sm font-semibold text-ink">Notlar</div>
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Sözleşme kartı notu"
+          value={cardNote}
+          onChange={(e) => setCardNote(e.target.value)}
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
+            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
       </div>
 

@@ -18,6 +18,7 @@ type ReportRow = {
   recipient?: string;
   subject?: string;
   description?: string;
+  card_note?: string;
   delivery_method?: string;
   period_start_month?: number;
   period_start_year?: number;
@@ -67,6 +68,9 @@ export default function ReportDetailPage() {
   const [deliveryEbysId, setDeliveryEbysId] = useState("");
   const [deliveryEbysDate, setDeliveryEbysDate] = useState("");
   const [deliveryOtherDesc, setDeliveryOtherDesc] = useState("");
+  const [cardNote, setCardNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteNotice, setNoteNotice] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -91,6 +95,7 @@ export default function ReportDetailPage() {
         setDeliveryEbysId(r.delivery_ebys_id || "");
         setDeliveryEbysDate(r.delivery_ebys_date || "");
         setDeliveryOtherDesc(r.delivery_other_desc || "");
+        setCardNote(r.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
@@ -174,6 +179,26 @@ export default function ReportDetailPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNotice(`Durum güncellenemedi: ${msg}`);
+    }
+  }
+
+  async function handleSaveCardNote() {
+    if (!rep) return;
+    setNoteSaving(true);
+    setNoteNotice(null);
+    try {
+      const updated = await apiFetch<ReportRow>(`/api/reports/${rep.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ card_note: cardNote || null })
+      });
+      setRep(updated);
+      setCardNote(updated.card_note || "");
+      setNoteNotice("Not kaydedildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not kaydedilemedi: ${msg}`);
+    } finally {
+      setNoteSaving(false);
     }
   }
 
@@ -318,6 +343,22 @@ export default function ReportDetailPage() {
           </Button>
         </form>
       ) : null}
+
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+        <div className="text-sm font-semibold text-ink">Notlar</div>
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Rapor kartı notu"
+          value={cardNote}
+          onChange={(e) => setCardNote(e.target.value)}
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
+            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
+        </div>
+      </div>
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex items-center justify-between">

@@ -22,6 +22,7 @@ type Customer = {
   contact_person?: string;
   contact_phone?: string;
   contact_email?: string;
+  card_note?: string;
 };
 
 type FileRow = {
@@ -98,6 +99,9 @@ export default function CustomerCardPage() {
   const [contactPerson, setContactPerson] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [cardNote, setCardNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteNotice, setNoteNotice] = useState<string | null>(null);
 
   const [showDocs, setShowDocs] = useState(false);
   const [showReports, setShowReports] = useState(false);
@@ -135,6 +139,7 @@ export default function CustomerCardPage() {
         setContactPerson(c.contact_person || "");
         setContactPhone(formatPhoneInput(c.contact_phone || ""));
         setContactEmail(c.contact_email || "");
+        setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -196,6 +201,26 @@ export default function CustomerCardPage() {
     setOtherFileName("");
     const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}&scope=other`);
     setFiles(updatedFiles);
+  }
+
+  async function handleSaveCardNote() {
+    if (!customer) return;
+    setNoteSaving(true);
+    setNoteNotice(null);
+    try {
+      const updated = await apiFetch<Customer>(`/api/customers/${customer.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ card_note: cardNote || null })
+      });
+      setCustomer(updated);
+      setCardNote(updated.card_note || "");
+      setNoteNotice("Not kaydedildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not kaydedilemedi: ${msg}`);
+    } finally {
+      setNoteSaving(false);
+    }
   }
 
   async function handleDeleteFile(fileId: number) {
@@ -283,6 +308,22 @@ export default function CustomerCardPage() {
               {customer.identity_type === "TCKN" ? customer.tckn : customer.tax_no}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
+        <div className="text-sm font-semibold text-ink">Notlar</div>
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Müşteri kartı notu"
+          value={cardNote}
+          onChange={(e) => setCardNote(e.target.value)}
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
+            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
       </div>
 
