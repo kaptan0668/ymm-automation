@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { apiFetch, apiUpload, me } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -69,8 +69,11 @@ type ContractRow = {
 
 type NoteRow = {
   id: number;
+  subject?: string;
   text: string;
   created_at: string;
+  mail_sent_at?: string | null;
+  files?: FileRow[];
 };
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
@@ -90,7 +93,6 @@ export default function CustomerCardPage() {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
-  const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -111,12 +113,13 @@ export default function CustomerCardPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [cardNote, setCardNote] = useState("");
-  const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
   const [manualEmails, setManualEmails] = useState("");
-  const [mailSending, setMailSending] = useState(false);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [newNoteSubject, setNewNoteSubject] = useState("Bu müşteri hakkında");
   const [newNoteText, setNewNoteText] = useState("");
-  const [savingNewNote, setSavingNewNote] = useState(false);
+  const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
+  const [noteActionLoading, setNoteActionLoading] = useState<"save" | "send" | null>(null);
   const [noteContactName, setNoteContactName] = useState("");
   const [noteContactEmail, setNoteContactEmail] = useState("");
 
@@ -127,17 +130,15 @@ export default function CustomerCardPage() {
 
   const [otherFile, setOtherFile] = useState<File | null>(null);
   const [otherFileName, setOtherFileName] = useState("");
-  const [noteFile, setNoteFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [c, d, r, f, nf, n, contractItems, meInfo] = await Promise.all([
+        const [c, d, r, f, n, contractItems, meInfo] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${id}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?customer=${id}`),
           apiFetch<ReportRow[]>(`/api/reports/?customer=${id}`),
           apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`),
-          apiFetch<FileRow[]>(`/api/files/?customer=${id}&note_scope=1`),
           apiFetch<NoteRow[]>(`/api/notes/?customer=${id}`),
           apiFetch<ContractRow[]>(`/api/contracts/?customer=${id}`),
           me()
@@ -146,7 +147,6 @@ export default function CustomerCardPage() {
         setDocs(d);
         setReports(r);
         setFiles(f);
-        setNoteFiles(nf);
         setNotes(n);
         setContracts(contractItems);
         setIsStaff(Boolean(meInfo?.is_staff));
@@ -226,133 +226,56 @@ export default function CustomerCardPage() {
     const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}&scope=other`);
     setFiles(updatedFiles);
   }
-
-  async function handleSaveCardNote() {
-    if (!customer) return;
-    setNoteSaving(true);
-    setNoteNotice(null);
-    try {
-      const updated = await apiFetch<Customer>(`/api/customers/${customer.id}/`, {
-        method: "PATCH",
-        body: JSON.stringify({ card_note: cardNote || null })
-      });
-      setCustomer(updated);
-      setCardNote(updated.card_note || "");
-      setNoteNotice("Not kaydedildi.");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNoteNotice(`Not kaydedilemedi: ${msg}`);
-    } finally {
-      setNoteSaving(false);
-    }
-  }
-
-  async function handleDeleteFile(fileId: number) {
-    if (!confirm("Dosya silinsin mi?")) return;
-    await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
-    const updatedFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`);
-    setFiles(updatedFiles);
-  }
-
-  async function handleUploadNoteFile() {
-    if (!customer || !noteFile) return;
-    const fd = new FormData();
-    fd.append("file", noteFile);
-    fd.append("customer", String(customer.id));
-    fd.append("note_scope", "1");
-    await apiUpload("/api/files/upload/", fd);
-    setNoteFile(null);
-    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${customer.id}&note_scope=1`);
-    setNoteFiles(updatedNoteFiles);
-  }
-
-  async function handleDeleteNoteFile(fileId: number) {
-    if (!confirm("Not dosyası silinsin mi?")) return;
-    await apiFetch(`/api/files/${fileId}/`, { method: "DELETE" });
-    const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?customer=${id}&note_scope=1`);
-    setNoteFiles(updatedNoteFiles);
-  }
-
-  async function handleSendNoteMail() {
-    if (!customer) return;
-    setMailSending(true);
-    setNoteNotice(null);
-    try {
-      await apiFetch(`/api/customers/${customer.id}/send_note_mail/`, {
-        method: "POST",
-        body: JSON.stringify({
-          extra_emails: manualEmails || null,
-          note_contact_name: noteContactName || null,
-          note_contact_email: noteContactEmail || null
-        })
-      });
-      setNoteNotice("Not e-postası gönderildi.");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNoteNotice(`Mail gönderilemedi: ${msg}`);
-    } finally {
-      setMailSending(false);
-    }
-  }
-
-  async function handleAddNoteAndSend() {
+  async function handleSaveNote(sendMail: boolean) {
     if (!customer || !newNoteText.trim()) return;
-    setSavingNewNote(true);
+    setNoteActionLoading(sendMail ? "send" : "save");
     setNoteNotice(null);
     try {
       const created = await apiFetch<NoteRow>(`/api/notes/`, {
         method: "POST",
         body: JSON.stringify({
           customer: customer.id,
-          text: newNoteText.trim(),
-          send_mail: true,
-          note_contact_name: noteContactName || null,
-          note_contact_email: noteContactEmail || null,
-          extra_emails: manualEmails || null
+          subject: newNoteSubject.trim() || "Bu müşteri hakkında",
+          text: newNoteText.trim()
         })
       });
-      setNotes((prev) => [created, ...prev]);
+      for (const f of newNoteFiles) {
+        const fd = new FormData();
+        fd.append("file", f);
+        fd.append("customer", String(customer.id));
+        fd.append("note", String(created.id));
+        fd.append("note_scope", "1");
+        await apiUpload("/api/files/upload/", fd);
+      }
+      if (sendMail) {
+        await apiFetch(`/api/notes/${created.id}/send_mail/`, {
+          method: "POST",
+          body: JSON.stringify({
+            subject: newNoteSubject.trim() || "Bu müşteri hakkında",
+            note_contact_name: noteContactName || null,
+            note_contact_email: noteContactEmail || null,
+            extra_emails: manualEmails || null
+          })
+        });
+      }
+      const [updatedCustomer, updatedNotes] = await Promise.all([
+        apiFetch<Customer>(`/api/customers/${customer.id}/`),
+        apiFetch<NoteRow[]>(`/api/notes/?customer=${customer.id}`)
+      ]);
+      setCustomer(updatedCustomer);
+      setCardNote(updatedCustomer.card_note || "");
+      setNotes(updatedNotes);
       setNewNoteText("");
-      setNoteNotice("Not eklendi ve mail gönderildi.");
+      setNewNoteFiles([]);
+      setNoteModalOpen(false);
+      setNoteNotice(sendMail ? "Not kaydedildi ve mail gönderildi." : "Not kaydedildi.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setNoteNotice(`Not eklenemedi: ${msg}`);
+      setNoteNotice(`Not işlemi başarısız: ${msg}`);
     } finally {
-      setSavingNewNote(false);
+      setNoteActionLoading(null);
     }
   }
-
-  const relatedNotes = useMemo(() => {
-    const items: Array<{ source: string; title: string; note: string }> = [];
-    for (const c of contracts) {
-      if ((c.card_note || "").trim()) {
-        items.push({
-          source: "Sözleşme",
-          title: c.contract_no || `Sözleşme #${c.id}`,
-          note: (c.card_note || "").trim()
-        });
-      }
-    }
-    for (const d of docs) {
-      if ((d.card_note || "").trim()) {
-        items.push({
-          source: "Evrak",
-          title: d.doc_no,
-          note: (d.card_note || "").trim()
-        });
-      }
-    }
-    for (const r of reports) {
-      if ((r.card_note || "").trim()) {
-        items.push({
-          source: "Rapor",
-          title: r.report_no,
-          note: (r.card_note || "").trim()
-        });
-      }
-    }
-    return items;
-  }, [contracts, docs, reports]);
 
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!customer) return <div>Yükleniyor...</div>;
@@ -407,96 +330,84 @@ export default function CustomerCardPage() {
         </div>
       </div>
 
-      <div className={`rounded-2xl border p-6 ${cardNote?.trim() || noteFiles.length > 0 ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
+      <div className={`rounded-2xl border p-6 ${cardNote?.trim() ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
         <div className="text-sm font-semibold text-ink">Notlar</div>
-        {relatedNotes.length > 0 ? (
-          <div className="mt-3 space-y-2 rounded-md border border-ink/15 bg-white p-3">
-            <div className="text-xs font-medium text-ink/70">Kartlardan otomatik gelen notlar</div>
-            {relatedNotes.map((n, i) => (
-              <div key={`${n.source}-${n.title}-${i}`} className="rounded-md border border-ink/10 bg-haze/60 p-2 text-sm">
-                <div className="text-xs text-ink/60">
-                  {n.source}: {n.title}
-                </div>
-                <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.note}</div>
-              </div>
-            ))}
-          </div>
-        ) : null}
         <textarea
-          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
-          placeholder="Müşteri kartı notu"
+          className="mt-3 h-24 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Son not"
           value={cardNote}
-          onChange={(e) => setCardNote(e.target.value)}
-        />
-        <textarea
-          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
-          placeholder="Yeni not yazın (bu not mail ile gönderilir)"
-          value={newNoteText}
-          onChange={(e) => setNewNoteText(e.target.value)}
+          readOnly
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="İlgili kişi"
-            value={noteContactName}
-            onChange={(e) => setNoteContactName(e.target.value)}
-          />
-          <Input
-            placeholder="İlgili e-posta"
-            value={noteContactEmail}
-            onChange={(e) => setNoteContactEmail(e.target.value)}
-          />
-          <Input
-            placeholder="Ek e-posta (virgülle)"
-            value={manualEmails}
-            onChange={(e) => setManualEmails(e.target.value)}
-          />
-          <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
-            {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
-          </Button>
-          <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
-            {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
-          </Button>
-          <Button variant="outline" onClick={handleAddNoteAndSend} disabled={savingNewNote || !newNoteText.trim()}>
-            {savingNewNote ? "Kaydediliyor..." : "Yeni Notu Kaydet + Mail Gönder"}
-          </Button>
-          <input
-            type="file"
-            className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
-            onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
-          />
-          <Button variant="outline" onClick={handleUploadNoteFile} disabled={!noteFile}>
-            Not Dosyası Ekle
+          <Input placeholder="İlgili kişi" value={noteContactName} onChange={(e) => setNoteContactName(e.target.value)} />
+          <Input placeholder="İlgili e-posta" value={noteContactEmail} onChange={(e) => setNoteContactEmail(e.target.value)} />
+          <Input placeholder="Ek e-posta (virgülle)" value={manualEmails} onChange={(e) => setManualEmails(e.target.value)} />
+          <Button variant="outline" onClick={() => setNoteModalOpen(true)}>
+            Not Ekle
           </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
         </div>
-        {noteFiles.length > 0 ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {noteFiles.map((f) => (
-              <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
-                <a className="text-sm text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
-                  {f.filename}
-                </a>
-                {isStaff ? (
-                  <button className="text-xs text-red-600" onClick={() => handleDeleteNoteFile(f.id)}>
-                    Sil
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
         {notes.length > 0 ? (
           <div className="mt-4 space-y-2">
             <div className="text-xs font-medium text-ink/70">Not Geçmişi</div>
             {notes.map((n) => (
               <div key={n.id} className="rounded-md border border-ink/10 bg-white p-2 text-sm">
-                <div className="text-xs text-ink/60">{new Date(n.created_at).toLocaleString("tr-TR")}</div>
+                <div className="text-xs text-ink/60">
+                  Kayıt: {new Date(n.created_at).toLocaleString("tr-TR")}
+                  {n.mail_sent_at ? ` • Mail: ${new Date(n.mail_sent_at).toLocaleString("tr-TR")}` : ""}
+                </div>
+                {n.subject ? <div className="mt-1 font-medium text-ink/80">Konu: {n.subject}</div> : null}
                 <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
+                {n.files && n.files.length > 0 ? (
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {n.files.map((f) => (
+                      <a key={f.id} className="text-xs text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                        {f.filename}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
         ) : null}
       </div>
+
+      {noteModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-ink/10 bg-white p-6 shadow-xl">
+            <div className="text-base font-semibold">Not Ekle</div>
+            <Input className="mt-3" placeholder="Konu" value={newNoteSubject} onChange={(e) => setNewNoteSubject(e.target.value)} />
+            <textarea
+              className="mt-3 h-40 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+              placeholder="Not metni"
+              value={newNoteText}
+              onChange={(e) => setNewNoteText(e.target.value)}
+            />
+            <input type="file" multiple className="mt-3 block w-full text-sm" onChange={(e) => setNewNoteFiles(Array.from(e.target.files || []))} />
+            {newNoteFiles.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {newNoteFiles.map((f) => (
+                  <span key={`${f.name}-${f.size}`} className="rounded-full border border-ink/20 px-2 py-0.5 text-xs">
+                    {f.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setNoteModalOpen(false)} disabled={noteActionLoading !== null}>
+                İptal
+              </Button>
+              <Button variant="outline" onClick={() => handleSaveNote(false)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
+                {noteActionLoading === "save" ? "Kaydediliyor..." : "Kaydet"}
+              </Button>
+              <Button onClick={() => handleSaveNote(true)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
+                {noteActionLoading === "send" ? "Gönderiliyor..." : "Kaydet ve Mail Gönder"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="grid gap-3 sm:grid-cols-5">
@@ -801,5 +712,6 @@ export default function CustomerCardPage() {
     </div>
   );
 }
+
 
 

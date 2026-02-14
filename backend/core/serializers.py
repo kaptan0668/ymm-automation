@@ -5,6 +5,8 @@ import boto3
 from botocore.client import Config
 from rest_framework import serializers
 from django.utils import timezone
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import (
     Customer,
     Document,
@@ -123,9 +125,26 @@ class FileSerializer(serializers.ModelSerializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
+    files = FileSerializer(source="note_files", many=True, read_only=True)
+
     class Meta:
         model = Note
-        fields = "__all__"
+        fields = (
+            "id",
+            "subject",
+            "text",
+            "mail_sent_at",
+            "customer",
+            "document",
+            "report",
+            "contract",
+            "files",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+            "is_archived",
+        )
         read_only_fields = ("created_by", "updated_by", "created_at", "updated_at", "is_archived")
 
     def validate(self, attrs):
@@ -400,6 +419,24 @@ class AppSettingSerializer(serializers.ModelSerializer):
         if "smtp_password" in validated_data and not validated_data.get("smtp_password"):
             validated_data.pop("smtp_password", None)
         return super().update(instance, validated_data)
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        use_tls = attrs.get("smtp_use_tls", getattr(instance, "smtp_use_tls", False))
+        use_ssl = attrs.get("smtp_use_ssl", getattr(instance, "smtp_use_ssl", False))
+        if use_tls and use_ssl:
+            raise serializers.ValidationError(
+                {"smtp_use_ssl": "TLS ve SSL aynı anda aktif olamaz. Yalnızca birini açın."}
+            )
+        smtp_user = attrs.get("smtp_user", getattr(instance, "smtp_user", None))
+        smtp_from = attrs.get("smtp_from_email", getattr(instance, "smtp_from_email", None))
+        for field_name, value in (("smtp_user", smtp_user), ("smtp_from_email", smtp_from)):
+            if value:
+                try:
+                    validate_email(value)
+                except DjangoValidationError:
+                    raise serializers.ValidationError({field_name: "Geçerli bir e-posta girin."})
+        return attrs
 
     class Meta:
         model = AppSetting

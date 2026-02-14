@@ -118,30 +118,34 @@ def _parse_emails(value):
     return cleaned
 
 
-def _send_note_email(*, request, entity_label: str, entity_code: str, note_text: str, to_emails, files_qs, contact_name: str | None):
+def _send_note_email(
+    *,
+    request,
+    entity_label: str,
+    entity_code: str,
+    note_subject: str | None,
+    note_text: str,
+    to_emails,
+    files_qs,
+    contact_name: str | None,
+):
     if not note_text.strip():
         raise ValidationError("Gönderilecek not boş olamaz.")
     recipients = _parse_emails(to_emails)
     if not recipients:
         raise ValidationError("Geçerli bir alıcı e-posta bulunamadı.")
 
-    actor = _actor(request)
-    actor_name = ""
-    if actor:
-        actor_name = actor.get_full_name().strip() or actor.username
-    if not actor_name:
-        actor_name = "YMM Otomasyon"
-
     timestamp = timezone.localtime().strftime("%d.%m.%Y %H:%M")
     recipient_name = (contact_name or "").strip() or "İlgili Kişi"
+    clean_subject = (note_subject or "").strip() or f"Bu {entity_label.lower()} hakkında"
 
-    subject = f"[YMM Otomasyon] {entity_label} Notu - {entity_code}"
+    subject = f"[YMM Otomasyon] {entity_code} - {clean_subject}"
     body = (
         f"Sayın {recipient_name},\n\n"
-        f"{entity_label} için bir not paylaşılmıştır.\n\n"
+        f"İlgili kayıt: {entity_label} {entity_code}\n"
+        f"Konu: {clean_subject}\n\n"
         f"{note_text.strip()}\n\n"
-        f"Bilginize.\n\n"
-        f"{actor_name}\n"
+        f"İyi çalışmalar dileriz.\n\n"
         f"Tarih: {timestamp}"
     )
     smtp = _smtp_runtime_config()
@@ -169,6 +173,78 @@ def _send_note_email(*, request, entity_label: str, entity_code: str, note_text:
 
     message.send(fail_silently=False)
     return {"sent_to": recipients, "attachment_count": attached_count}
+
+
+def _resolve_note_target(note: Note, payload: dict):
+    entity_label = "Müşteri"
+    entity_code = ""
+    to_emails = [payload.get("extra_emails")]
+    contact_name = payload.get("note_contact_name") or ""
+    contact_email = payload.get("note_contact_email")
+
+    if note.document_id:
+        entity_label = "Evrak"
+        entity_code = note.document.doc_no
+        to_emails.extend(
+            [
+                contact_email,
+                note.document.note_contact_email,
+                note.document.delivery_email,
+                getattr(note.document.customer, "contact_email", None),
+                getattr(note.document.customer, "email", None),
+            ]
+        )
+        contact_name = (
+            contact_name
+            or note.document.note_contact_name
+            or getattr(note.document.customer, "contact_person", "")
+        )
+    elif note.report_id:
+        entity_label = "Rapor"
+        entity_code = note.report.report_no
+        to_emails.extend(
+            [
+                contact_email,
+                note.report.note_contact_email,
+                note.report.delivery_email,
+                getattr(note.report.customer, "contact_email", None),
+                getattr(note.report.customer, "email", None),
+            ]
+        )
+        contact_name = (
+            contact_name
+            or note.report.note_contact_name
+            or getattr(note.report.customer, "contact_person", "")
+        )
+    elif note.contract_id:
+        entity_label = "Sözleşme"
+        entity_code = note.contract.contract_no or f"Sözleşme #{note.contract_id}"
+        to_emails.extend(
+            [
+                contact_email,
+                note.contract.note_contact_email,
+                getattr(note.contract.customer, "contact_email", None),
+                getattr(note.contract.customer, "email", None),
+            ]
+        )
+        contact_name = (
+            contact_name
+            or note.contract.note_contact_name
+            or getattr(note.contract.customer, "contact_person", "")
+        )
+    elif note.customer_id:
+        entity_label = "Müşteri"
+        entity_code = note.customer.name
+        to_emails.extend(
+            [
+                contact_email,
+                note.customer.contact_email,
+                note.customer.email,
+            ]
+        )
+        contact_name = contact_name or note.customer.contact_person or ""
+
+    return entity_label, entity_code, to_emails, contact_name
 
 
 def _smtp_runtime_config():
@@ -281,6 +357,7 @@ class CustomerViewSet(AuditViewSet):
                 request=request,
                 entity_label="Müşteri",
                 entity_code=customer.name,
+                note_subject=None,
                 note_text=(customer.card_note or ""),
                 to_emails=[note_contact_email or None, customer.contact_email, customer.email, extra_emails],
                 files_qs=files_qs,
@@ -391,6 +468,7 @@ class DocumentViewSet(AuditViewSet):
                 request=request,
                 entity_label="Evrak",
                 entity_code=doc.doc_no,
+                note_subject=None,
                 note_text=(doc.card_note or ""),
                 to_emails=[doc.note_contact_email, doc.delivery_email, getattr(doc.customer, "contact_email", None), getattr(doc.customer, "email", None), extra_emails],
                 files_qs=files_qs,
@@ -522,6 +600,7 @@ class ReportViewSet(AuditViewSet):
                 request=request,
                 entity_label="Rapor",
                 entity_code=rep.report_no,
+                note_subject=None,
                 note_text=(rep.card_note or ""),
                 to_emails=[rep.note_contact_email, rep.delivery_email, getattr(rep.customer, "contact_email", None), getattr(rep.customer, "email", None), extra_emails],
                 files_qs=files_qs,
@@ -545,6 +624,7 @@ class FileViewSet(AuditViewSet):
         customer = self.request.query_params.get("customer")
         scope = self.request.query_params.get("scope")
         note_scope = self.request.query_params.get("note_scope")
+        note = self.request.query_params.get("note")
         if document:
             qs = qs.filter(document_id=document)
         if report:
@@ -553,6 +633,8 @@ class FileViewSet(AuditViewSet):
             qs = qs.filter(contract_id=contract)
         if customer:
             qs = qs.filter(customer_id=customer)
+        if note:
+            qs = qs.filter(note_id=note)
         if scope == "other":
             qs = qs.filter(document__isnull=True, report__isnull=True, contract__isnull=True, note_scope=False)
         if note_scope is not None:
@@ -588,6 +670,7 @@ class FileViewSet(AuditViewSet):
         report_id = request.data.get("report")
         contract_id = request.data.get("contract")
         customer_id = request.data.get("customer")
+        note_id = request.data.get("note")
         raw_note_scope = request.data.get("note_scope")
         is_note_scope = str(raw_note_scope).lower() in ("1", "true", "yes", "on")
 
@@ -618,6 +701,7 @@ class FileViewSet(AuditViewSet):
             report_id=report_id or None,
             contract_id=contract_id or None,
             customer_id=customer_id or None,
+            note_id=note_id or None,
             created_by=_actor(request),
             updated_by=_actor(request),
         )
@@ -651,98 +735,44 @@ class NoteViewSet(AuditViewSet):
         return qs
 
     def create(self, request, *args, **kwargs):
-        send_mail = str(request.data.get("send_mail", "false")).lower() in ("1", "true", "yes", "on")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         note = serializer.instance
         response_data = serializer.data
 
-        if send_mail:
-            entity_label = "Müşteri"
-            entity_code = ""
-            files_qs = File.objects.none()
-            to_emails = [request.data.get("extra_emails")]
-            contact_name = request.data.get("note_contact_name") or ""
-
-            if note.document_id:
-                entity_label = "Evrak"
-                entity_code = note.document.doc_no
-                files_qs = File.objects.filter(document_id=note.document_id, note_scope=True)
-                to_emails.extend(
-                    [
-                        request.data.get("note_contact_email"),
-                        note.document.note_contact_email,
-                        note.document.delivery_email,
-                        getattr(note.document.customer, "contact_email", None),
-                        getattr(note.document.customer, "email", None),
-                    ]
-                )
-                contact_name = contact_name or note.document.note_contact_name or getattr(note.document.customer, "contact_person", "")
-            elif note.report_id:
-                entity_label = "Rapor"
-                entity_code = note.report.report_no
-                files_qs = File.objects.filter(report_id=note.report_id, note_scope=True)
-                to_emails.extend(
-                    [
-                        request.data.get("note_contact_email"),
-                        note.report.note_contact_email,
-                        note.report.delivery_email,
-                        getattr(note.report.customer, "contact_email", None),
-                        getattr(note.report.customer, "email", None),
-                    ]
-                )
-                contact_name = contact_name or note.report.note_contact_name or getattr(note.report.customer, "contact_person", "")
-            elif note.contract_id:
-                entity_label = "Sözleşme"
-                entity_code = note.contract.contract_no or f"Sözleşme #{note.contract_id}"
-                files_qs = File.objects.filter(contract_id=note.contract_id, note_scope=True)
-                to_emails.extend(
-                    [
-                        request.data.get("note_contact_email"),
-                        note.contract.note_contact_email,
-                        getattr(note.contract.customer, "contact_email", None),
-                        getattr(note.contract.customer, "email", None),
-                    ]
-                )
-                contact_name = contact_name or note.contract.note_contact_name or getattr(note.contract.customer, "contact_person", "")
-            elif note.customer_id:
-                entity_label = "Müşteri"
-                entity_code = note.customer.name
-                files_qs = File.objects.filter(
-                    customer_id=note.customer_id,
-                    note_scope=True,
-                    document__isnull=True,
-                    report__isnull=True,
-                    contract__isnull=True,
-                )
-                to_emails.extend(
-                    [
-                        request.data.get("note_contact_email"),
-                        note.customer.contact_email,
-                        note.customer.email,
-                    ]
-                )
-                contact_name = contact_name or note.customer.contact_person or ""
-
-            try:
-                mail_result = _send_note_email(
-                    request=request,
-                    entity_label=entity_label,
-                    entity_code=entity_code,
-                    note_text=note.text,
-                    to_emails=to_emails,
-                    files_qs=files_qs,
-                    contact_name=contact_name,
-                )
-                response_data["mail"] = mail_result
-            except Exception as exc:
-                return Response(
-                    {"error": f"Mail gönderilemedi: {str(exc)}", "note": response_data},
-                    status=400,
-                )
+        if note.document_id:
+            Document.objects.filter(id=note.document_id).update(card_note=note.text)
+        elif note.report_id:
+            Report.objects.filter(id=note.report_id).update(card_note=note.text)
+        elif note.contract_id:
+            Contract.objects.filter(id=note.contract_id).update(card_note=note.text)
+        elif note.customer_id:
+            Customer.objects.filter(id=note.customer_id).update(card_note=note.text)
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def send_mail(self, request, pk=None):
+        note = self.get_object()
+        try:
+            entity_label, entity_code, to_emails, contact_name = _resolve_note_target(note, request.data)
+            files_qs = File.objects.filter(note_id=note.id, note_scope=True)
+            result = _send_note_email(
+                request=request,
+                entity_label=entity_label,
+                entity_code=entity_code,
+                note_subject=request.data.get("subject") or note.subject,
+                note_text=note.text,
+                to_emails=to_emails,
+                files_qs=files_qs,
+                contact_name=contact_name,
+            )
+            note.mail_sent_at = timezone.now()
+            note.save(update_fields=["mail_sent_at", "updated_at"])
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
+        return Response({"status": "ok", **result})
 
 
 class ContractJobViewSet(AuditViewSet):
@@ -799,6 +829,7 @@ class ContractViewSet(AuditViewSet):
                 request=request,
                 entity_label="Sözleşme",
                 entity_code=contract.contract_no or f"Sözleşme #{contract.id}",
+                note_subject=None,
                 note_text=(contract.card_note or ""),
                 to_emails=[contract.note_contact_email, getattr(contract.customer, "contact_email", None), getattr(contract.customer, "email", None), extra_emails],
                 files_qs=files_qs,
@@ -952,15 +983,18 @@ class SettingsViewSet(viewsets.ViewSet):
         recipients = _parse_emails(to_email)
         if not recipients:
             return Response({"error": "Geçerli bir e-posta girin."}, status=400)
-        smtp = _smtp_runtime_config()
-        msg = EmailMessage(
-            subject="[YMM Otomasyon] SMTP Test",
-            body="Bu bir test e-postasıdır. SMTP ayarları başarıyla çalışıyor.",
-            from_email=smtp["from_email"],
-            to=recipients,
-            connection=smtp["connection"],
-        )
-        msg.send(fail_silently=False)
+        try:
+            smtp = _smtp_runtime_config()
+            msg = EmailMessage(
+                subject="[YMM Otomasyon] SMTP Test",
+                body="Bu bir test e-postasıdır. SMTP ayarları başarıyla çalışıyor.",
+                from_email=smtp["from_email"],
+                to=recipients,
+                connection=smtp["connection"],
+            )
+            msg.send(fail_silently=False)
+        except Exception as exc:
+            return Response({"error": f"Test mail gönderilemedi: {str(exc)}"}, status=400)
         return Response({"status": "ok", "sent_to": recipients})
 
 

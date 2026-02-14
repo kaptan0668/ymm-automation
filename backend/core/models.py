@@ -364,6 +364,14 @@ class File(AuditBase):
         related_name="files",
         verbose_name="Müşteri",
     )
+    note = models.ForeignKey(
+        "Note",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="note_files",
+        verbose_name="Not",
+    )
 
     class Meta:
         verbose_name = "Dosya"
@@ -371,7 +379,9 @@ class File(AuditBase):
 
 
 class Note(AuditBase):
+    subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not konusu")
     text = models.TextField(verbose_name="Not metni")
+    mail_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="Mail gönderim zamanı")
     customer = models.ForeignKey(
         "Customer",
         null=True,
