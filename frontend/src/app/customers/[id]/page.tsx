@@ -67,6 +67,12 @@ type ContractRow = {
   signed_url?: string;
 };
 
+type NoteRow = {
+  id: number;
+  text: string;
+  created_at: string;
+};
+
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-xl border border-ink/10 bg-white/80 p-6 text-sm text-ink/60">
@@ -85,6 +91,7 @@ export default function CustomerCardPage() {
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [files, setFiles] = useState<FileRow[]>([]);
   const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
+  const [notes, setNotes] = useState<NoteRow[]>([]);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -108,6 +115,10 @@ export default function CustomerCardPage() {
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
   const [manualEmails, setManualEmails] = useState("");
   const [mailSending, setMailSending] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [savingNewNote, setSavingNewNote] = useState(false);
+  const [noteContactName, setNoteContactName] = useState("");
+  const [noteContactEmail, setNoteContactEmail] = useState("");
 
   const [showDocs, setShowDocs] = useState(false);
   const [showReports, setShowReports] = useState(false);
@@ -121,12 +132,13 @@ export default function CustomerCardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [c, d, r, f, nf, contractItems, meInfo] = await Promise.all([
+        const [c, d, r, f, nf, n, contractItems, meInfo] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${id}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?customer=${id}`),
           apiFetch<ReportRow[]>(`/api/reports/?customer=${id}`),
           apiFetch<FileRow[]>(`/api/files/?customer=${id}&scope=other`),
           apiFetch<FileRow[]>(`/api/files/?customer=${id}&note_scope=1`),
+          apiFetch<NoteRow[]>(`/api/notes/?customer=${id}`),
           apiFetch<ContractRow[]>(`/api/contracts/?customer=${id}`),
           me()
         ]);
@@ -135,6 +147,7 @@ export default function CustomerCardPage() {
         setReports(r);
         setFiles(f);
         setNoteFiles(nf);
+        setNotes(n);
         setContracts(contractItems);
         setIsStaff(Boolean(meInfo?.is_staff));
         setName(c.name || "");
@@ -148,6 +161,8 @@ export default function CustomerCardPage() {
         setContactPerson(c.contact_person || "");
         setContactPhone(formatPhoneInput(c.contact_phone || ""));
         setContactEmail(c.contact_email || "");
+        setNoteContactName(c.contact_person || "");
+        setNoteContactEmail(c.contact_email || c.email || "");
         setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -265,7 +280,11 @@ export default function CustomerCardPage() {
     try {
       await apiFetch(`/api/customers/${customer.id}/send_note_mail/`, {
         method: "POST",
-        body: JSON.stringify({ extra_emails: manualEmails || null })
+        body: JSON.stringify({
+          extra_emails: manualEmails || null,
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null
+        })
       });
       setNoteNotice("Not e-postası gönderildi.");
     } catch (err) {
@@ -273,6 +292,33 @@ export default function CustomerCardPage() {
       setNoteNotice(`Mail gönderilemedi: ${msg}`);
     } finally {
       setMailSending(false);
+    }
+  }
+
+  async function handleAddNoteAndSend() {
+    if (!customer || !newNoteText.trim()) return;
+    setSavingNewNote(true);
+    setNoteNotice(null);
+    try {
+      const created = await apiFetch<NoteRow>(`/api/notes/`, {
+        method: "POST",
+        body: JSON.stringify({
+          customer: customer.id,
+          text: newNoteText.trim(),
+          send_mail: true,
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null,
+          extra_emails: manualEmails || null
+        })
+      });
+      setNotes((prev) => [created, ...prev]);
+      setNewNoteText("");
+      setNoteNotice("Not eklendi ve mail gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not eklenemedi: ${msg}`);
+    } finally {
+      setSavingNewNote(false);
     }
   }
 
@@ -382,7 +428,23 @@ export default function CustomerCardPage() {
           value={cardNote}
           onChange={(e) => setCardNote(e.target.value)}
         />
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Yeni not yazın (bu not mail ile gönderilir)"
+          value={newNoteText}
+          onChange={(e) => setNewNoteText(e.target.value)}
+        />
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="İlgili kişi"
+            value={noteContactName}
+            onChange={(e) => setNoteContactName(e.target.value)}
+          />
+          <Input
+            placeholder="İlgili e-posta"
+            value={noteContactEmail}
+            onChange={(e) => setNoteContactEmail(e.target.value)}
+          />
           <Input
             placeholder="Ek e-posta (virgülle)"
             value={manualEmails}
@@ -393,6 +455,9 @@ export default function CustomerCardPage() {
           </Button>
           <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
             {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
+          </Button>
+          <Button variant="outline" onClick={handleAddNoteAndSend} disabled={savingNewNote || !newNoteText.trim()}>
+            {savingNewNote ? "Kaydediliyor..." : "Yeni Notu Kaydet + Mail Gönder"}
           </Button>
           <input
             type="file"
@@ -416,6 +481,17 @@ export default function CustomerCardPage() {
                     Sil
                   </button>
                 ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {notes.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            <div className="text-xs font-medium text-ink/70">Not Geçmişi</div>
+            {notes.map((n) => (
+              <div key={n.id} className="rounded-md border border-ink/10 bg-white p-2 text-sm">
+                <div className="text-xs text-ink/60">{new Date(n.created_at).toLocaleString("tr-TR")}</div>
+                <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
               </div>
             ))}
           </div>

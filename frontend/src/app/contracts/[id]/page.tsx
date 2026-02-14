@@ -66,6 +66,12 @@ type FileRow = {
   signed_url?: string;
 };
 
+type NoteRow = {
+  id: number;
+  text: string;
+  created_at: string;
+};
+
 export default function ContractDetailPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -74,6 +80,7 @@ export default function ContractDetailPage() {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
+  const [notes, setNotes] = useState<NoteRow[]>([]);
   const [cardNote, setCardNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
@@ -82,26 +89,30 @@ export default function ContractDetailPage() {
   const [noteContactEmail, setNoteContactEmail] = useState("");
   const [manualEmails, setManualEmails] = useState("");
   const [mailSending, setMailSending] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [savingNewNote, setSavingNewNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
         const c = await apiFetch<ContractRow>(`/api/contracts/${id}/`);
-        const [cust, docs, reps, nf] = await Promise.all([
+        const [cust, docs, reps, nf, n] = await Promise.all([
           apiFetch<Customer>(`/api/customers/${c.customer}/`),
           apiFetch<DocumentRow[]>(`/api/documents/?contract=${c.id}`),
           apiFetch<ReportRow[]>(`/api/reports/?contract=${c.id}`),
-          apiFetch<FileRow[]>(`/api/files/?contract=${c.id}&note_scope=1`)
+          apiFetch<FileRow[]>(`/api/files/?contract=${c.id}&note_scope=1`),
+          apiFetch<NoteRow[]>(`/api/notes/?contract=${c.id}`)
         ]);
         setContract(c);
         setCustomer(cust);
         setDocuments(docs);
         setReports(reps);
         setNoteFiles(nf);
+        setNotes(n);
         setCardNote(c.card_note || "");
-        setNoteContactName(c.note_contact_name || "");
-        setNoteContactEmail(c.note_contact_email || "");
+        setNoteContactName(c.note_contact_name || cust.contact_person || "");
+        setNoteContactEmail(c.note_contact_email || cust.contact_email || cust.email || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -169,6 +180,33 @@ export default function ContractDetailPage() {
       setNoteNotice(`Mail gönderilemedi: ${msg}`);
     } finally {
       setMailSending(false);
+    }
+  }
+
+  async function handleAddNoteAndSend() {
+    if (!contract || !newNoteText.trim()) return;
+    setSavingNewNote(true);
+    setNoteNotice(null);
+    try {
+      const created = await apiFetch<NoteRow>(`/api/notes/`, {
+        method: "POST",
+        body: JSON.stringify({
+          contract: contract.id,
+          text: newNoteText.trim(),
+          send_mail: true,
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null,
+          extra_emails: manualEmails || null
+        })
+      });
+      setNotes((prev) => [created, ...prev]);
+      setNewNoteText("");
+      setNoteNotice("Not eklendi ve mail gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not eklenemedi: ${msg}`);
+    } finally {
+      setSavingNewNote(false);
     }
   }
 
@@ -254,6 +292,12 @@ export default function ContractDetailPage() {
           value={cardNote}
           onChange={(e) => setCardNote(e.target.value)}
         />
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Yeni not yazın (bu not mail ile gönderilir)"
+          value={newNoteText}
+          onChange={(e) => setNewNoteText(e.target.value)}
+        />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input
             placeholder="İlgili kişi"
@@ -276,6 +320,9 @@ export default function ContractDetailPage() {
           <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
             {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
           </Button>
+          <Button variant="outline" onClick={handleAddNoteAndSend} disabled={savingNewNote || !newNoteText.trim()}>
+            {savingNewNote ? "Kaydediliyor..." : "Yeni Notu Kaydet + Mail Gönder"}
+          </Button>
           <input
             type="file"
             className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
@@ -296,6 +343,17 @@ export default function ContractDetailPage() {
                 <button className="text-xs text-red-600" onClick={() => handleDeleteNoteFile(f.id)}>
                   Sil
                 </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {notes.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            <div className="text-xs font-medium text-ink/70">Not Geçmişi</div>
+            {notes.map((n) => (
+              <div key={n.id} className="rounded-md border border-ink/10 bg-white p-2 text-sm">
+                <div className="text-xs text-ink/60">{new Date(n.created_at).toLocaleString("tr-TR")}</div>
+                <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
               </div>
             ))}
           </div>

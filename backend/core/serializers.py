@@ -10,6 +10,7 @@ from .models import (
     Document,
     Report,
     File,
+    Note,
     ContractJob,
     Contract,
     AppSetting,
@@ -119,6 +120,24 @@ class FileSerializer(serializers.ModelSerializer):
 
     def get_signed_url(self, obj):
         return _presign(obj.url) or obj.url
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = "__all__"
+        read_only_fields = ("created_by", "updated_by", "created_at", "updated_at", "is_archived")
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        customer = attrs.get("customer", getattr(instance, "customer", None))
+        document = attrs.get("document", getattr(instance, "document", None))
+        report = attrs.get("report", getattr(instance, "report", None))
+        contract = attrs.get("contract", getattr(instance, "contract", None))
+        linked = [x for x in [customer, document, report, contract] if x is not None]
+        if len(linked) != 1:
+            raise serializers.ValidationError("Not yalnızca tek bir karta bağlı olmalıdır.")
+        return attrs
 
 
 class DocumentSerializer(serializers.ModelSerializer):

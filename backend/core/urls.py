@@ -9,6 +9,7 @@ from .views import (
     DocumentViewSet,
     ReportViewSet,
     FileViewSet,
+    NoteViewSet,
     ContractJobViewSet,
     ContractViewSet,
     SettingsViewSet,
@@ -22,6 +23,7 @@ router.register(r"customers", CustomerViewSet)
 router.register(r"documents", DocumentViewSet)
 router.register(r"reports", ReportViewSet)
 router.register(r"files", FileViewSet)
+router.register(r"notes", NoteViewSet)
 router.register(r"contract-jobs", ContractJobViewSet)
 router.register(r"contracts", ContractViewSet)
 router.register(r"settings", SettingsViewSet, basename="settings")

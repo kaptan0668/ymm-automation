@@ -22,6 +22,7 @@ from .models import (
     Document,
     Report,
     File,
+    Note,
     Contract,
     ContractJob,
     AuditLog,
@@ -39,6 +40,7 @@ from .serializers import (
     DocumentSerializer,
     ReportSerializer,
     FileSerializer,
+    NoteSerializer,
     ContractJobSerializer,
     ContractSerializer,
     AppSettingSerializer,
@@ -270,6 +272,8 @@ class CustomerViewSet(AuditViewSet):
     def send_note_mail(self, request, pk=None):
         customer = self.get_object()
         extra_emails = request.data.get("extra_emails")
+        note_contact_name = (request.data.get("note_contact_name") or "").strip()
+        note_contact_email = (request.data.get("note_contact_email") or "").strip()
         files_qs = File.objects.filter(customer_id=customer.id, note_scope=True, document__isnull=True, report__isnull=True, contract__isnull=True)
 
         try:
@@ -278,12 +282,12 @@ class CustomerViewSet(AuditViewSet):
                 entity_label="Müşteri",
                 entity_code=customer.name,
                 note_text=(customer.card_note or ""),
-                to_emails=[customer.contact_email, customer.email, extra_emails],
+                to_emails=[note_contact_email or None, customer.contact_email, customer.email, extra_emails],
                 files_qs=files_qs,
-                contact_name=customer.contact_person,
+                contact_name=note_contact_name or customer.contact_person,
             )
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
 
         return Response({"status": "ok", **result})
 
@@ -392,8 +396,8 @@ class DocumentViewSet(AuditViewSet):
                 files_qs=files_qs,
                 contact_name=contact_name,
             )
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
 
         return Response({"status": "ok", **result})
 
@@ -523,8 +527,8 @@ class ReportViewSet(AuditViewSet):
                 files_qs=files_qs,
                 contact_name=contact_name,
             )
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
 
         return Response({"status": "ok", **result})
 
@@ -626,6 +630,121 @@ class FileViewSet(AuditViewSet):
         return Response(FileSerializer(file_obj).data, status=201)
 
 
+class NoteViewSet(AuditViewSet):
+    queryset = Note.objects.all()
+    serializer_class = NoteSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        customer = self.request.query_params.get("customer")
+        document = self.request.query_params.get("document")
+        report = self.request.query_params.get("report")
+        contract = self.request.query_params.get("contract")
+        if customer:
+            qs = qs.filter(customer_id=customer)
+        if document:
+            qs = qs.filter(document_id=document)
+        if report:
+            qs = qs.filter(report_id=report)
+        if contract:
+            qs = qs.filter(contract_id=contract)
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        send_mail = str(request.data.get("send_mail", "false")).lower() in ("1", "true", "yes", "on")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        note = serializer.instance
+        response_data = serializer.data
+
+        if send_mail:
+            entity_label = "Müşteri"
+            entity_code = ""
+            files_qs = File.objects.none()
+            to_emails = [request.data.get("extra_emails")]
+            contact_name = request.data.get("note_contact_name") or ""
+
+            if note.document_id:
+                entity_label = "Evrak"
+                entity_code = note.document.doc_no
+                files_qs = File.objects.filter(document_id=note.document_id, note_scope=True)
+                to_emails.extend(
+                    [
+                        request.data.get("note_contact_email"),
+                        note.document.note_contact_email,
+                        note.document.delivery_email,
+                        getattr(note.document.customer, "contact_email", None),
+                        getattr(note.document.customer, "email", None),
+                    ]
+                )
+                contact_name = contact_name or note.document.note_contact_name or getattr(note.document.customer, "contact_person", "")
+            elif note.report_id:
+                entity_label = "Rapor"
+                entity_code = note.report.report_no
+                files_qs = File.objects.filter(report_id=note.report_id, note_scope=True)
+                to_emails.extend(
+                    [
+                        request.data.get("note_contact_email"),
+                        note.report.note_contact_email,
+                        note.report.delivery_email,
+                        getattr(note.report.customer, "contact_email", None),
+                        getattr(note.report.customer, "email", None),
+                    ]
+                )
+                contact_name = contact_name or note.report.note_contact_name or getattr(note.report.customer, "contact_person", "")
+            elif note.contract_id:
+                entity_label = "Sözleşme"
+                entity_code = note.contract.contract_no or f"Sözleşme #{note.contract_id}"
+                files_qs = File.objects.filter(contract_id=note.contract_id, note_scope=True)
+                to_emails.extend(
+                    [
+                        request.data.get("note_contact_email"),
+                        note.contract.note_contact_email,
+                        getattr(note.contract.customer, "contact_email", None),
+                        getattr(note.contract.customer, "email", None),
+                    ]
+                )
+                contact_name = contact_name or note.contract.note_contact_name or getattr(note.contract.customer, "contact_person", "")
+            elif note.customer_id:
+                entity_label = "Müşteri"
+                entity_code = note.customer.name
+                files_qs = File.objects.filter(
+                    customer_id=note.customer_id,
+                    note_scope=True,
+                    document__isnull=True,
+                    report__isnull=True,
+                    contract__isnull=True,
+                )
+                to_emails.extend(
+                    [
+                        request.data.get("note_contact_email"),
+                        note.customer.contact_email,
+                        note.customer.email,
+                    ]
+                )
+                contact_name = contact_name or note.customer.contact_person or ""
+
+            try:
+                mail_result = _send_note_email(
+                    request=request,
+                    entity_label=entity_label,
+                    entity_code=entity_code,
+                    note_text=note.text,
+                    to_emails=to_emails,
+                    files_qs=files_qs,
+                    contact_name=contact_name,
+                )
+                response_data["mail"] = mail_result
+            except Exception as exc:
+                return Response(
+                    {"error": f"Mail gönderilemedi: {str(exc)}", "note": response_data},
+                    status=400,
+                )
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+
 class ContractJobViewSet(AuditViewSet):
     queryset = ContractJob.objects.all()
     serializer_class = ContractJobSerializer
@@ -685,8 +804,8 @@ class ContractViewSet(AuditViewSet):
                 files_qs=files_qs,
                 contact_name=contact_name,
             )
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
 
         return Response({"status": "ok", **result})
 
@@ -930,6 +1049,7 @@ def backup(request):
             stdout=f,
         )
     return FileResponse(open(filename, "rb"), as_attachment=True, filename=f"backup_{ts}.json")
+
 
 
 

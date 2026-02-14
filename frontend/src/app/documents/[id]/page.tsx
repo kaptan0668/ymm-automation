@@ -42,6 +42,19 @@ type FileRow = {
   signed_url?: string;
 };
 
+type NoteRow = {
+  id: number;
+  text: string;
+  created_at: string;
+};
+
+type CustomerMini = {
+  id: number;
+  contact_person?: string;
+  contact_email?: string;
+  email?: string;
+};
+
 export default function DocumentDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -49,6 +62,7 @@ export default function DocumentDetailPage() {
   const [doc, setDoc] = useState<DocumentRow | null>(null);
   const [files, setFiles] = useState<FileRow[]>([]);
   const [noteFiles, setNoteFiles] = useState<FileRow[]>([]);
+  const [notes, setNotes] = useState<NoteRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,19 +93,24 @@ export default function DocumentDetailPage() {
   const [noteContactEmail, setNoteContactEmail] = useState("");
   const [manualEmails, setManualEmails] = useState("");
   const [mailSending, setMailSending] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [savingNewNote, setSavingNewNote] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState<CustomerMini | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [d, f, nf, meInfo] = await Promise.all([
+        const [d, f, nf, n, meInfo] = await Promise.all([
           apiFetch<DocumentRow>(`/api/documents/${id}/`),
           apiFetch<FileRow[]>(`/api/files/?document=${id}&note_scope=0`),
           apiFetch<FileRow[]>(`/api/files/?document=${id}&note_scope=1`),
+          apiFetch<NoteRow[]>(`/api/notes/?document=${id}`),
           me()
         ]);
         setDoc(d);
         setFiles(f);
         setNoteFiles(nf);
+        setNotes(n);
         setIsSuperuser(Boolean(meInfo?.is_superuser));
         setReferenceNo(d.reference_no || "");
         setSender(d.sender || "");
@@ -110,6 +129,10 @@ export default function DocumentDetailPage() {
         setCardNote(d.card_note || "");
         setNoteContactName(d.note_contact_name || "");
         setNoteContactEmail(d.note_contact_email || "");
+        const c = await apiFetch<CustomerMini>(`/api/customers/${d.customer}/`);
+        setCustomerInfo(c);
+        if (!d.note_contact_name) setNoteContactName(c.contact_person || "");
+        if (!d.note_contact_email) setNoteContactEmail(c.contact_email || c.email || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -251,6 +274,33 @@ export default function DocumentDetailPage() {
       setNoteNotice(`Mail gönderilemedi: ${msg}`);
     } finally {
       setMailSending(false);
+    }
+  }
+
+  async function handleAddNoteAndSend() {
+    if (!doc || !newNoteText.trim()) return;
+    setSavingNewNote(true);
+    setNoteNotice(null);
+    try {
+      const created = await apiFetch<NoteRow>(`/api/notes/`, {
+        method: "POST",
+        body: JSON.stringify({
+          document: doc.id,
+          text: newNoteText.trim(),
+          send_mail: true,
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null,
+          extra_emails: manualEmails || null
+        })
+      });
+      setNotes((prev) => [created, ...prev]);
+      setNewNoteText("");
+      setNoteNotice("Not eklendi ve mail gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Not eklenemedi: ${msg}`);
+    } finally {
+      setSavingNewNote(false);
     }
   }
 
@@ -407,6 +457,12 @@ export default function DocumentDetailPage() {
           value={cardNote}
           onChange={(e) => setCardNote(e.target.value)}
         />
+        <textarea
+          className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
+          placeholder="Yeni not yazın (bu not mail ile gönderilir)"
+          value={newNoteText}
+          onChange={(e) => setNewNoteText(e.target.value)}
+        />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input
             placeholder="İlgili kişi"
@@ -428,6 +484,9 @@ export default function DocumentDetailPage() {
           </Button>
           <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
             {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
+          </Button>
+          <Button variant="outline" onClick={handleAddNoteAndSend} disabled={savingNewNote || !newNoteText.trim()}>
+            {savingNewNote ? "Kaydediliyor..." : "Yeni Notu Kaydet + Mail Gönder"}
           </Button>
           <input
             type="file"
@@ -451,6 +510,17 @@ export default function DocumentDetailPage() {
                     Sil
                   </button>
                 ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {notes.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            <div className="text-xs font-medium text-ink/70">Not Geçmişi</div>
+            {notes.map((n) => (
+              <div key={n.id} className="rounded-md border border-ink/10 bg-white p-2 text-sm">
+                <div className="text-xs text-ink/60">{new Date(n.created_at).toLocaleString("tr-TR")}</div>
+                <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
               </div>
             ))}
           </div>

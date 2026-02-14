@@ -369,6 +369,47 @@ class File(AuditBase):
         verbose_name = "Dosya"
         verbose_name_plural = "Dosyalar"
 
+
+class Note(AuditBase):
+    text = models.TextField(verbose_name="Not metni")
+    customer = models.ForeignKey(
+        "Customer",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notes",
+        verbose_name="Müşteri",
+    )
+    document = models.ForeignKey(
+        "Document",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notes",
+        verbose_name="Evrak",
+    )
+    report = models.ForeignKey(
+        "Report",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notes",
+        verbose_name="Rapor",
+    )
+    contract = models.ForeignKey(
+        "Contract",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notes",
+        verbose_name="Sözleşme",
+    )
+
+    class Meta:
+        verbose_name = "Not"
+        verbose_name_plural = "Notlar"
+        ordering = ("-created_at",)
+
 class AuditLog(models.Model):
     model = models.CharField(max_length=128, verbose_name="Model")
     object_id = models.CharField(max_length=64, verbose_name="Kayıt ID")
