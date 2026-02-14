@@ -205,6 +205,21 @@ export default function ContractDetailPage() {
     }
   }
 
+  function confirmAndSendNote() {
+    const recipients = recipientEmails
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .join(", ");
+    if (!recipients) {
+      setModalError("Mail göndermek için en az bir alıcı e-posta girin.");
+      return;
+    }
+    const ok = window.confirm(`Notu şu alıcılara mail olarak gönderiyorsunuz:\n${recipients}\n\nOnaylıyor musunuz?`);
+    if (!ok) return;
+    handleSaveNote(true);
+  }
+
   const period = useMemo(() => {
     if (
       !contract?.period_start_month ||
@@ -426,7 +441,7 @@ export default function ContractDetailPage() {
               <Button variant="outline" onClick={() => handleSaveNote(false)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
                 {noteActionLoading === "save" ? "Kaydediliyor..." : "Kaydet"}
               </Button>
-              <Button onClick={() => handleSaveNote(true)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
+              <Button onClick={confirmAndSendNote} disabled={noteActionLoading !== null || !newNoteText.trim()}>
                 {noteActionLoading === "send" ? "Gönderiliyor..." : "Kaydet ve Mail Gönder"}
               </Button>
             </div>

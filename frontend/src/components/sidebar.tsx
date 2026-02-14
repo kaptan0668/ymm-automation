@@ -12,6 +12,7 @@ const items = [
   { href: "/contracts", label: "Sozlesmeler" },
   { href: "/documents", label: "Evrak" },
   { href: "/reports", label: "Rapor" },
+  { href: "/lists", label: "Listeler" },
   { href: "/settings", label: "Ayarlar" }
 ];
 

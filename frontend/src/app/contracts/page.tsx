@@ -45,6 +45,11 @@ export default function ContractsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterNo, setFilterNo] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   async function load() {
     setLoadıng(true);
@@ -87,6 +92,17 @@ export default function ContractsPage() {
     customers.forEach((c) => m.set(c.id, c));
     return m;
   }, [customers]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((x) => {
+      if (filterCustomer && String(x.customer) !== filterCustomer) return false;
+      if (filterStatus && (x.status || "") !== filterStatus) return false;
+      if (filterNo && !(x.contract_no || "").toLowerCase().includes(filterNo.toLowerCase())) return false;
+      if (filterDateFrom && x.contract_date && x.contract_date < filterDateFrom) return false;
+      if (filterDateTo && x.contract_date && x.contract_date > filterDateTo) return false;
+      return true;
+    });
+  }, [items, filterCustomer, filterStatus, filterNo, filterDateFrom, filterDateTo]);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -227,6 +243,31 @@ export default function ContractsPage() {
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
 
+      <div className="grid gap-2 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-5">
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={filterCustomer}
+          onChange={(e) => setFilterCustomer(e.target.value)}
+        >
+          <option value="">Mükellef (Tümü)</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="">Durum (Tümü)</option>
+          <option value="OPEN">Açık</option>
+          <option value="DONE">Tamamlandı</option>
+        </select>
+        <Input placeholder="Sözleşme no ara" value={filterNo} onChange={(e) => setFilterNo(e.target.value)} />
+        <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+        <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+      </div>
+
       {loadıng ? <div>Yükleniyor...</div> : null}
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
@@ -246,7 +287,7 @@ export default function ContractsPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <tr key={item.id} className="border-t border-ink/10">
                   <td className="px-4 py-3">{item.contract_date || "-"}</td>
                   <td className="px-4 py-3">{item.contract_no || "-"}</td>

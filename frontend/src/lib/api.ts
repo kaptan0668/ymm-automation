@@ -149,6 +149,19 @@ export async function sendTestMail(to_email: string) {
   });
 }
 
+export async function sendTableMail(payload: {
+  to_emails: string;
+  title: string;
+  subject?: string;
+  columns: string[];
+  rows: Array<string[] | Record<string, string>>;
+}) {
+  return apiFetch<{ status: string; sent_to: string[] }>("/api/settings/send_table_mail/", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function updateCounter(data: {
   kind: "report_global" | "report_year" | "document";
   year?: number;

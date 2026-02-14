@@ -305,6 +305,21 @@ export default function ReportDetailPage() {
     }
   }
 
+  function confirmAndSendNote() {
+    const recipients = recipientEmails
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .join(", ");
+    if (!recipients) {
+      setModalError("Mail göndermek için en az bir alıcı e-posta girin.");
+      return;
+    }
+    const ok = window.confirm(`Notu şu alıcılara mail olarak gönderiyorsunuz:\n${recipients}\n\nOnaylıyor musunuz?`);
+    if (!ok) return;
+    handleSaveNote(true);
+  }
+
   if (error) return <div className="text-sm text-red-600">{error}</div>;
   if (!rep) return <div>Yükleniyor...</div>;
 
@@ -598,7 +613,7 @@ export default function ReportDetailPage() {
               <Button variant="outline" onClick={() => handleSaveNote(false)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
                 {noteActionLoading === "save" ? "Kaydediliyor..." : "Kaydet"}
               </Button>
-              <Button onClick={() => handleSaveNote(true)} disabled={noteActionLoading !== null || !newNoteText.trim()}>
+              <Button onClick={confirmAndSendNote} disabled={noteActionLoading !== null || !newNoteText.trim()}>
                 {noteActionLoading === "send" ? "Gönderiliyor..." : "Kaydet ve Mail Gönder"}
               </Button>
             </div>

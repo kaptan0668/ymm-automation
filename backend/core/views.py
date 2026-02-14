@@ -1,6 +1,7 @@
 ﻿import os
 import re
 import uuid
+import csv
 import boto3
 from botocore.client import Config
 from io import BytesIO
@@ -1059,6 +1060,52 @@ class SettingsViewSet(viewsets.ViewSet):
             msg.send(fail_silently=False)
         except Exception as exc:
             return Response({"error": f"Test mail gönderilemedi: {str(exc)}"}, status=400)
+        return Response({"status": "ok", "sent_to": recipients})
+
+    @action(detail=False, methods=["post"])
+    def send_table_mail(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+
+        recipients = _parse_emails(request.data.get("to_emails"))
+        if not recipients:
+            return Response({"error": "En az bir geçerli alıcı e-posta girin."}, status=400)
+
+        columns = request.data.get("columns") or []
+        rows = request.data.get("rows") or []
+        if not isinstance(columns, list) or not isinstance(rows, list) or not columns:
+            return Response({"error": "Geçerli kolon/satır verisi zorunludur."}, status=400)
+
+        title = (request.data.get("title") or "Liste Raporu").strip()
+        subject = (request.data.get("subject") or title).strip()
+
+        from io import StringIO
+
+        sio = StringIO()
+        writer = csv.writer(sio)
+        writer.writerow([str(c) for c in columns])
+        for row in rows:
+            if isinstance(row, list):
+                writer.writerow([str(v) if v is not None else "" for v in row])
+            elif isinstance(row, dict):
+                writer.writerow([str(row.get(c, "")) for c in columns])
+        csv_bytes = sio.getvalue().encode("utf-8-sig")
+        filename = f"{title.replace(' ', '_')}.csv"
+
+        try:
+            smtp = _smtp_runtime_config()
+            msg = EmailMessage(
+                subject=subject,
+                body=f"{title} raporu ektedir.",
+                from_email=smtp["from_email"],
+                to=recipients,
+                connection=smtp["connection"],
+            )
+            msg.attach(filename, csv_bytes, "text/csv")
+            msg.send(fail_silently=False)
+        except Exception as exc:
+            return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
         return Response({"status": "ok", "sent_to": recipients})
 
 
