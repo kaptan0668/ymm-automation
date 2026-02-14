@@ -274,7 +274,7 @@ export default function DocumentDetailPage() {
             note_contact_name: noteContactName || null,
             note_contact_email: noteContactEmail || null,
             extra_emails: manualEmails || null,
-            recipients: recipientEmails || null
+            recipients: recipientEmails
           })
         });
         const sentTo = (mailRes.sent_to || []).join(", ");
