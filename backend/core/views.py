@@ -17,9 +17,13 @@ from django.core.mail import get_connection
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import Q, Max, Count
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from .models import (
     Customer,
     Document,
@@ -188,6 +192,53 @@ def _send_note_email(
 
     message.send(fail_silently=False)
     return {"sent_to": recipients, "attachment_count": attached_count}
+
+
+def _build_table_pdf(title: str, columns, rows, note_text: str | None = None) -> bytes:
+    buffer = BytesIO()
+    pagesize = landscape(A4) if len(columns) > 6 else A4
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=pagesize,
+        leftMargin=24,
+        rightMargin=24,
+        topMargin=24,
+        bottomMargin=24,
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph(title, styles["Title"]),
+        Paragraph(f"Tarih: {timezone.localtime().strftime('%d.%m.%Y %H:%M')}", styles["Normal"]),
+    ]
+    if note_text and note_text.strip():
+        story.append(Spacer(1, 8))
+        story.append(Paragraph(f"Aciklama: {note_text.strip()}", styles["Normal"]))
+    story.append(Spacer(1, 12))
+
+    table_data = [columns] + rows
+    table = Table(table_data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#ece4d9")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#bdbdbd")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    story.append(table)
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
 
 
 def _resolve_note_target(note: Note, payload: dict):
@@ -1079,6 +1130,10 @@ class SettingsViewSet(viewsets.ViewSet):
 
         title = (request.data.get("title") or "Liste Raporu").strip()
         subject = (request.data.get("subject") or title).strip()
+        note_text = (request.data.get("note") or "").strip()
+        attachment_format = (request.data.get("attachment_format") or "pdf").strip().lower()
+        if attachment_format not in ("pdf", "csv"):
+            attachment_format = "pdf"
 
         from io import StringIO
 
@@ -1090,23 +1145,58 @@ class SettingsViewSet(viewsets.ViewSet):
                 writer.writerow([str(v) if v is not None else "" for v in row])
             elif isinstance(row, dict):
                 writer.writerow([str(row.get(c, "")) for c in columns])
+        normalized_rows = [
+            [str(v) if v is not None else "" for v in row] if isinstance(row, list)
+            else [str(row.get(c, "")) for c in columns]
+            for row in rows
+        ]
         csv_bytes = sio.getvalue().encode("utf-8-sig")
-        filename = f"{title.replace(' ', '_')}.csv"
+        safe_name = title.replace(" ", "_")
+        filename = f"{safe_name}.pdf" if attachment_format == "pdf" else f"{safe_name}.csv"
 
         try:
             smtp = _smtp_runtime_config()
+            body = f"{title} raporu ektedir."
+            if note_text:
+                body = f"{title} raporu ektedir.\n\nAciklama:\n{note_text}"
             msg = EmailMessage(
                 subject=subject,
-                body=f"{title} raporu ektedir.",
+                body=body,
                 from_email=smtp["from_email"],
                 to=recipients,
                 connection=smtp["connection"],
             )
-            msg.attach(filename, csv_bytes, "text/csv")
+            if attachment_format == "pdf":
+                pdf_bytes = _build_table_pdf(title, [str(c) for c in columns], normalized_rows, note_text)
+                msg.attach(filename, pdf_bytes, "application/pdf")
+            else:
+                msg.attach(filename, csv_bytes, "text/csv")
             msg.send(fail_silently=False)
         except Exception as exc:
             return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
         return Response({"status": "ok", "sent_to": recipients})
+
+    @action(detail=False, methods=["post"])
+    def export_table_pdf(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        columns = request.data.get("columns") or []
+        rows = request.data.get("rows") or []
+        if not isinstance(columns, list) or not isinstance(rows, list) or not columns:
+            return Response({"error": "Geçerli kolon/satır verisi zorunludur."}, status=400)
+        title = (request.data.get("title") or "Liste Raporu").strip()
+        note_text = (request.data.get("note") or "").strip()
+        normalized_rows = [
+            [str(v) if v is not None else "" for v in row] if isinstance(row, list)
+            else [str(row.get(c, "")) for c in columns]
+            for row in rows
+        ]
+        pdf_bytes = _build_table_pdf(title, [str(c) for c in columns], normalized_rows, note_text)
+        filename = f"{title.replace(' ', '_')}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 class CounterAdminViewSet(viewsets.ViewSet):

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch, apiUpload, sendTableMail } from "@/lib/api";
+import { apiFetch, apiUpload, exportTablePdf, sendTableMail } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -71,6 +71,7 @@ export default function ListsPage() {
   const [search, setSearch] = useState("");
   const [saveCustomerId, setSaveCustomerId] = useState("");
   const [mailTo, setMailTo] = useState("");
+  const [mailNote, setMailNote] = useState("");
   const [mailing, setMailing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -238,6 +239,8 @@ export default function ListsPage() {
         to_emails: mailTo,
         title,
         subject: title,
+        note: mailNote,
+        attachment_format: "pdf",
         columns,
         rows: tableRows
       });
@@ -249,8 +252,37 @@ export default function ListsPage() {
     }
   }
 
-  function printOrPdf() {
+  function printView() {
     window.print();
+  }
+
+  async function downloadPdf() {
+    try {
+      const title =
+        tab === "customers"
+          ? "Mukellef Liste Raporu"
+          : tab === "documents"
+          ? "Evrak Liste Raporu"
+          : tab === "reports"
+          ? "Rapor Liste Raporu"
+          : "Sozlesme Liste Raporu";
+      const blob = await exportTablePdf({
+        title,
+        note: mailNote,
+        columns,
+        rows: tableRows
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setNotice(`PDF olusturulamadi: ${err instanceof Error ? err.message : "Hata"}`);
+    }
   }
 
   return (
@@ -327,8 +359,8 @@ export default function ListsPage() {
           Temizle
         </Button>
         <div className="flex gap-2">
-          <Button onClick={printOrPdf}>Yazdir</Button>
-          <Button variant="outline" onClick={printOrPdf}>PDF</Button>
+          <Button onClick={printView}>Yazdir</Button>
+          <Button variant="outline" onClick={downloadPdf}>PDF Indir</Button>
         </div>
       </div>
 
@@ -381,6 +413,8 @@ export default function ListsPage() {
         <Button variant="outline" onClick={handleSaveToCustomer} disabled={!saveCustomerId}>
           Mukellef Dosyasina Kaydet
         </Button>
+        <div />
+        <Input placeholder="Mail not/aciklama" value={mailNote} onChange={(e) => setMailNote(e.target.value)} />
         <div />
         <Input placeholder="Mail alicilari (virgulle)" value={mailTo} onChange={(e) => setMailTo(e.target.value)} />
         <Button onClick={handleMailList} disabled={mailing}>

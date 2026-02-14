@@ -153,6 +153,8 @@ export async function sendTableMail(payload: {
   to_emails: string;
   title: string;
   subject?: string;
+  note?: string;
+  attachment_format?: "pdf" | "csv";
   columns: string[];
   rows: Array<string[] | Record<string, string>>;
 }) {
@@ -160,6 +162,29 @@ export async function sendTableMail(payload: {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function exportTablePdf(payload: {
+  title: string;
+  note?: string;
+  columns: string[];
+  rows: Array<string[] | Record<string, string>>;
+}) {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  headers.set("Content-Type", "application/json");
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/settings/export_table_pdf/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.blob();
 }
 
 export async function updateCounter(data: {
