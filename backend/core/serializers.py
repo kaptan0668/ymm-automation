@@ -7,6 +7,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth import get_user_model
 from .models import (
     Customer,
     Document,
@@ -20,8 +21,14 @@ from .models import (
     ReportCounterGlobal,
     ReportCounterYearAll,
     YearLock,
+    ChatThread,
+    ChatParticipant,
+    ChatMessage,
+    ChatMessageFile,
     year_is_locked,
 )
+
+User = get_user_model()
 
 
 
@@ -488,6 +495,94 @@ class YearLockSerializer(serializers.ModelSerializer):
     class Meta:
         model = YearLock
         fields = "__all__"
+
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username", "first_name", "last_name", "email")
+
+
+class ChatMessageFileSerializer(serializers.ModelSerializer):
+    signed_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatMessageFile
+        fields = ("id", "filename", "content_type", "size", "url", "signed_url", "created_at")
+
+    def get_signed_url(self, obj):
+        return _presign(obj.url) or obj.url
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender = UserMiniSerializer(read_only=True)
+    files = ChatMessageFileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = ("id", "thread", "sender", "body", "is_deleted", "created_at", "files")
+        read_only_fields = ("sender", "is_deleted", "created_at")
+
+
+class ChatParticipantSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = ChatParticipant
+        fields = ("id", "user", "joined_at", "last_read_at")
+
+
+class ChatThreadSerializer(serializers.ModelSerializer):
+    participants = ChatParticipantSerializer(many=True, read_only=True)
+    created_by = UserMiniSerializer(read_only=True)
+    unread_count = serializers.IntegerField(read_only=True)
+    last_message_at = serializers.DateTimeField(read_only=True)
+    title = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = ChatThread
+        fields = (
+            "id",
+            "name",
+            "title",
+            "is_group",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "last_message_at",
+            "unread_count",
+            "participants",
+        )
+
+
+class ChatThreadCreateSerializer(serializers.Serializer):
+    is_group = serializers.BooleanField(default=False)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    user_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        allow_empty=True,
+    )
+
+    def validate(self, attrs):
+        is_group = bool(attrs.get("is_group"))
+        user_ids = attrs.get("user_ids") or []
+        if is_group:
+            if len(user_ids) < 1:
+                raise serializers.ValidationError({"user_ids": "Grup için en az bir kullanıcı seçin."})
+            if not (attrs.get("name") or "").strip():
+                raise serializers.ValidationError({"name": "Grup adı zorunludur."})
+        else:
+            if len(user_ids) != 1:
+                raise serializers.ValidationError({"user_ids": "Birebir sohbet için tek kullanıcı seçin."})
+        return attrs
+
+
+class ChatMessageCreateSerializer(serializers.Serializer):
+    body = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_body(self, value):
+        return (value or "").strip()
 
 
 

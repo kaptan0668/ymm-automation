@@ -173,3 +173,102 @@ export async function setYearLock(year: number, is_locked: boolean) {
     body: JSON.stringify({ year, is_locked })
   });
 }
+
+export type ChatUser = {
+  id: number;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+};
+
+export type ChatParticipant = {
+  id: number;
+  user: ChatUser;
+  joined_at: string;
+  last_read_at?: string | null;
+};
+
+export type ChatMessageFile = {
+  id: number;
+  filename: string;
+  content_type: string;
+  size: number;
+  url: string;
+  signed_url?: string;
+  created_at: string;
+};
+
+export type ChatMessage = {
+  id: number;
+  thread: number;
+  sender: ChatUser;
+  body: string;
+  is_deleted: boolean;
+  created_at: string;
+  files: ChatMessageFile[];
+};
+
+export type ChatThread = {
+  id: number;
+  name?: string | null;
+  title: string;
+  is_group: boolean;
+  created_by?: ChatUser | null;
+  created_at: string;
+  updated_at: string;
+  last_message_at?: string | null;
+  unread_count?: number;
+  participants: ChatParticipant[];
+};
+
+export async function getChatThreads() {
+  return apiFetch<ChatThread[]>("/api/chat-threads/");
+}
+
+export async function getChatUsers() {
+  return apiFetch<ChatUser[]>("/api/chat-threads/users/");
+}
+
+export async function createDirectThread(userId: number) {
+  return apiFetch<ChatThread>("/api/chat-threads/", {
+    method: "POST",
+    body: JSON.stringify({ is_group: false, user_ids: [userId] })
+  });
+}
+
+export async function createGroupThread(name: string, userIds: number[]) {
+  return apiFetch<ChatThread>("/api/chat-threads/", {
+    method: "POST",
+    body: JSON.stringify({ is_group: true, name, user_ids: userIds })
+  });
+}
+
+export async function getChatMessages(threadId: number) {
+  return apiFetch<ChatMessage[]>(`/api/chat-messages/?thread=${threadId}`);
+}
+
+export async function sendChatMessage(params: {
+  threadId: number;
+  body?: string;
+  files?: File[];
+}) {
+  const data = new FormData();
+  data.append("thread", String(params.threadId));
+  if (params.body) data.append("body", params.body);
+  for (const f of params.files || []) {
+    data.append("files", f);
+  }
+  return apiUpload<ChatMessage>("/api/chat-messages/", data);
+}
+
+export async function readChatThread(threadId: number) {
+  return apiFetch<{ status: string }>(`/api/chat-threads/${threadId}/read/`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function getChatUnreadCount() {
+  return apiFetch<{ unread_count: number }>("/api/chat-threads/unread_count/");
+}

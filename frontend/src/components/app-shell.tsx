@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
+import ChatDrawer from "@/components/chat-drawer";
 import { getAccessToken } from "@/lib/auth";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -31,6 +32,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
+      <ChatDrawer />
     </div>
   );
 }

@@ -480,6 +480,89 @@ class Contract(AuditBase):
         verbose_name_plural = "Sözleşmeler"
 
 
+class ChatThread(models.Model):
+    name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
+    is_group = models.BooleanField(default=False, verbose_name="Grup mu")
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Oluşturan kullanıcı",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturulma zamanı")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncellenme zamanı")
+
+    class Meta:
+        verbose_name = "Sohbet Konusu"
+        verbose_name_plural = "Sohbet Konuları"
+        ordering = ("-updated_at",)
+
+
+class ChatParticipant(models.Model):
+    thread = models.ForeignKey(
+        "ChatThread",
+        on_delete=models.CASCADE,
+        related_name="participants",
+        verbose_name="Sohbet",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="chat_participations",
+        verbose_name="Kullanıcı",
+    )
+    joined_at = models.DateTimeField(auto_now_add=True, verbose_name="Katılma zamanı")
+    last_read_at = models.DateTimeField(null=True, blank=True, verbose_name="Son okuma zamanı")
+
+    class Meta:
+        verbose_name = "Sohbet Katılımcısı"
+        verbose_name_plural = "Sohbet Katılımcıları"
+        unique_together = (("thread", "user"),)
+
+
+class ChatMessage(models.Model):
+    thread = models.ForeignKey(
+        "ChatThread",
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name="Sohbet",
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+        verbose_name="Gönderen",
+    )
+    body = models.TextField(null=True, blank=True, verbose_name="Mesaj")
+    is_deleted = models.BooleanField(default=False, verbose_name="Silindi mi")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturulma zamanı")
+
+    class Meta:
+        verbose_name = "Sohbet Mesajı"
+        verbose_name_plural = "Sohbet Mesajları"
+        ordering = ("created_at",)
+
+
+class ChatMessageFile(models.Model):
+    message = models.ForeignKey(
+        "ChatMessage",
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Mesaj",
+    )
+    filename = models.CharField(max_length=255, verbose_name="Dosya adı")
+    content_type = models.CharField(max_length=128, verbose_name="İçerik türü")
+    size = models.IntegerField(verbose_name="Boyut (byte)")
+    url = models.URLField(verbose_name="URL")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturulma zamanı")
+
+    class Meta:
+        verbose_name = "Mesaj Dosyası"
+        verbose_name_plural = "Mesaj Dosyaları"
+
+
 def year_is_locked(year: int) -> bool:
     lock = YearLock.objects.filter(year=year).only("is_locked").first()
     return bool(lock and lock.is_locked)

@@ -15,9 +15,10 @@ from django.core.mail import EmailMessage
 from django.core.mail import get_connection
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import Q
+from django.db.models import Q, Max, Count
 from django.http import FileResponse
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from .models import (
     Customer,
     Document,
@@ -32,6 +33,10 @@ from .models import (
     ReportCounterGlobal,
     ReportCounterYearAll,
     YearLock,
+    ChatThread,
+    ChatParticipant,
+    ChatMessage,
+    ChatMessageFile,
     year_is_locked,
     next_document_number,
     next_report_number,
@@ -46,9 +51,16 @@ from .serializers import (
     ContractSerializer,
     AppSettingSerializer,
     YearLockSerializer,
+    ChatThreadSerializer,
+    ChatThreadCreateSerializer,
+    ChatMessageSerializer,
+    ChatMessageCreateSerializer,
+    UserMiniSerializer,
 )
 from .tasks import process_contract_job
 from .contract_parser import parse_contract_text
+
+User = get_user_model()
 
 
 def _actor(request):
@@ -1117,6 +1129,214 @@ class YearLockViewSet(viewsets.ViewSet):
             obj.locked_by = None
         obj.save()
         return Response(YearLockSerializer(obj).data)
+
+
+class ChatThreadViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def _queryset(self, request):
+        user = _actor(request)
+        if not user:
+            return ChatThread.objects.none()
+        qs = (
+            ChatThread.objects.filter(participants__user=user)
+            .distinct()
+            .prefetch_related("participants__user")
+            .annotate(last_message_at=Max("messages__created_at"))
+            .order_by("-last_message_at", "-updated_at")
+        )
+        return qs
+
+    def list(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        rows = list(self._queryset(request))
+        for row in rows:
+            participant = next((p for p in row.participants.all() if p.user_id == user.id), None)
+            unread_qs = ChatMessage.objects.filter(thread_id=row.id, is_deleted=False).exclude(sender_id=user.id)
+            if participant and participant.last_read_at:
+                unread_qs = unread_qs.filter(created_at__gt=participant.last_read_at)
+            row.unread_count = unread_qs.count()
+            if row.is_group:
+                row.title = (row.name or "").strip() or "Grup Sohbeti"
+                continue
+            others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
+            row.title = ", ".join(others) if others else "Birebir Sohbet"
+        return Response(ChatThreadSerializer(rows, many=True).data)
+
+    def create(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        serializer = ChatThreadCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        is_group = data.get("is_group", False)
+        user_ids = [int(v) for v in data.get("user_ids") or [] if int(v) != user.id]
+
+        if not is_group:
+            target_id = user_ids[0]
+            existing = (
+                ChatThread.objects.filter(is_group=False, participants__user=user)
+                .filter(participants__user_id=target_id)
+                .annotate(pcount=Count("participants"))
+                .filter(pcount=2)
+                .first()
+            )
+            if existing:
+                row = self._queryset(request).filter(id=existing.id).first() or existing
+                others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
+                row.title = ", ".join(others) if others else "Birebir Sohbet"
+                return Response(ChatThreadSerializer(row).data)
+
+        thread = ChatThread.objects.create(
+            name=(data.get("name") or "").strip() or None,
+            is_group=is_group,
+            created_by=user,
+        )
+        all_user_ids = [user.id] + user_ids
+        unique_ids = []
+        seen = set()
+        for uid in all_user_ids:
+            if uid in seen:
+                continue
+            seen.add(uid)
+            unique_ids.append(uid)
+        users_map = {u.id: u for u in User.objects.filter(id__in=unique_ids)}
+        participants = []
+        now = timezone.now()
+        for uid in unique_ids:
+            if uid not in users_map:
+                continue
+            participants.append(
+                ChatParticipant(
+                    thread=thread,
+                    user_id=uid,
+                    last_read_at=now if uid == user.id else None,
+                )
+            )
+        ChatParticipant.objects.bulk_create(participants)
+        row = self._queryset(request).filter(id=thread.id).first() or thread
+        if row.is_group:
+            row.title = (row.name or "").strip() or "Grup Sohbeti"
+        else:
+            others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
+            row.title = ", ".join(others) if others else "Birebir Sohbet"
+        return Response(ChatThreadSerializer(row).data, status=201)
+
+    @action(detail=False, methods=["get"])
+    def users(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        qs = User.objects.filter(is_active=True).exclude(id=user.id).order_by("username")
+        return Response(UserMiniSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=["post"])
+    def read(self, request, pk=None):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        part = ChatParticipant.objects.filter(thread_id=pk, user=user).first()
+        if not part:
+            raise PermissionDenied("Bu sohbete erişim yetkiniz yok.")
+        part.last_read_at = timezone.now()
+        part.save(update_fields=["last_read_at"])
+        return Response({"status": "ok"})
+
+    @action(detail=False, methods=["get"])
+    def unread_count(self, request):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        rows = list(self._queryset(request))
+        total = 0
+        for row in rows:
+            participant = next((p for p in row.participants.all() if p.user_id == user.id), None)
+            unread_qs = ChatMessage.objects.filter(thread_id=row.id, is_deleted=False).exclude(sender_id=user.id)
+            if participant and participant.last_read_at:
+                unread_qs = unread_qs.filter(created_at__gt=participant.last_read_at)
+            total += unread_qs.count()
+        return Response({"unread_count": total})
+
+
+class ChatMessageViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def _ensure_participant(self, request, thread_id):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        part = ChatParticipant.objects.filter(thread_id=thread_id, user=user).first()
+        if not part:
+            raise PermissionDenied("Bu sohbete erişim yetkiniz yok.")
+        return user, part
+
+    def list(self, request):
+        thread_id = request.query_params.get("thread")
+        if not thread_id:
+            return Response({"error": "thread zorunludur."}, status=400)
+        user, part = self._ensure_participant(request, thread_id)
+        qs = (
+            ChatMessage.objects.filter(thread_id=thread_id, is_deleted=False)
+            .select_related("sender")
+            .prefetch_related("files")
+            .order_by("created_at")
+        )
+        part.last_read_at = timezone.now()
+        part.save(update_fields=["last_read_at"])
+        return Response(ChatMessageSerializer(qs, many=True).data)
+
+    def create(self, request):
+        thread_id = request.data.get("thread")
+        if not thread_id:
+            return Response({"error": "thread zorunludur."}, status=400)
+        user, part = self._ensure_participant(request, thread_id)
+        serializer = ChatMessageCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        body = serializer.validated_data.get("body", "")
+
+        upload_files = request.FILES.getlist("files")
+        if not body and not upload_files:
+            return Response({"error": "Mesaj veya dosya zorunludur."}, status=400)
+
+        msg = ChatMessage.objects.create(
+            thread_id=thread_id,
+            sender=user,
+            body=body or "",
+        )
+        ChatThread.objects.filter(id=thread_id).update(updated_at=timezone.now())
+
+        if upload_files:
+            client = _s3_client()
+            bucket = os.environ.get("MINIO_BUCKET", "ymm-files")
+            _ensure_bucket(client, bucket)
+            public_endpoint = os.environ.get("MINIO_PUBLIC_ENDPOINT")
+            endpoint = public_endpoint or os.environ.get("MINIO_ENDPOINT", "localhost:9000")
+            secure = os.environ.get("MINIO_SECURE", "false").lower() == "true"
+            scheme = "https" if secure else "http"
+            for upload in upload_files:
+                key = f"chat/{uuid.uuid4()}_{upload.name}"
+                client.upload_fileobj(
+                    upload,
+                    bucket,
+                    key,
+                    ExtraArgs={"ContentType": upload.content_type or "application/octet-stream"},
+                )
+                url = f"{scheme}://{endpoint}/{bucket}/{key}"
+                ChatMessageFile.objects.create(
+                    message=msg,
+                    filename=upload.name,
+                    content_type=upload.content_type or "application/octet-stream",
+                    size=upload.size,
+                    url=url,
+                )
+
+        part.last_read_at = timezone.now()
+        part.save(update_fields=["last_read_at"])
+        msg = ChatMessage.objects.select_related("sender").prefetch_related("files").get(id=msg.id)
+        return Response(ChatMessageSerializer(msg).data, status=201)
 
 
 @api_view(["GET"])

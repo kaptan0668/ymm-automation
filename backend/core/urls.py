@@ -15,6 +15,8 @@ from .views import (
     SettingsViewSet,
     CounterAdminViewSet,
     YearLockViewSet,
+    ChatThreadViewSet,
+    ChatMessageViewSet,
     backup,
 )
 
@@ -29,6 +31,8 @@ router.register(r"contracts", ContractViewSet)
 router.register(r"settings", SettingsViewSet, basename="settings")
 router.register(r"admin-counters", CounterAdminViewSet, basename="admin-counters")
 router.register(r"year-locks", YearLockViewSet, basename="year-locks")
+router.register(r"chat-threads", ChatThreadViewSet, basename="chat-threads")
+router.register(r"chat-messages", ChatMessageViewSet, basename="chat-messages")
 
 urlpatterns = [
     path("", include(router.urls)),
