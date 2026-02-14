@@ -8,6 +8,7 @@ import {
   getChatThreads,
   getChatUnreadCount,
   getChatUsers,
+  leaveChatThread,
   readChatThread,
   sendChatMessage,
   type ChatMessage,
@@ -48,7 +49,11 @@ export default function ChatDrawer() {
     try {
       const data = await getChatThreads();
       setThreads(data);
-      if (!activeThreadId && data.length > 0) setActiveThreadId(data[0].id);
+      const activeExists = activeThreadId && data.some((t) => t.id === activeThreadId);
+      if (!activeExists) {
+        const globalThread = data.find((t) => t.is_global);
+        setActiveThreadId(globalThread ? globalThread.id : data[0]?.id || null);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Sohbetler yüklenemedi.";
       setError(msg);
@@ -159,6 +164,20 @@ export default function ChatDrawer() {
     }
   }
 
+  async function handleLeaveThread(threadId: number) {
+    try {
+      await leaveChatThread(threadId);
+      const data = await getChatThreads();
+      setThreads(data);
+      const globalThread = data.find((t) => t.is_global);
+      if (activeThreadId === threadId) {
+        setActiveThreadId(globalThread ? globalThread.id : data[0]?.id || null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sohbet kapatılamadı.");
+    }
+  }
+
   return (
     <>
       <button
@@ -177,21 +196,36 @@ export default function ChatDrawer() {
             <div className="text-sm font-semibold">Sohbetler</div>
             <div className="mt-2 max-h-56 space-y-1 overflow-auto">
               {threads.map((t) => (
-                <button
+                <div
                   key={t.id}
-                  onClick={() => setActiveThreadId(t.id)}
                   className={`w-full rounded-md px-2 py-2 text-left text-sm ${
                     activeThreadId === t.id ? "bg-haze" : "hover:bg-haze/70"
                   }`}
                 >
-                  <div className="truncate font-medium">{t.title || t.name || "Sohbet"}</div>
-                  <div className="text-xs text-ink/60">{formatTs(t.last_message_at || t.updated_at)}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <button className="min-w-0 flex-1 text-left" onClick={() => setActiveThreadId(t.id)}>
+                      <div className="truncate font-medium">{t.title || t.name || "Sohbet"}</div>
+                      <div className="text-xs text-ink/60">{formatTs(t.last_message_at || t.updated_at)}</div>
+                    </button>
+                    {!t.is_global ? (
+                      <button
+                        className="text-xs text-ink/50 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLeaveThread(t.id);
+                        }}
+                        title="Sohbeti kapat"
+                      >
+                        x
+                      </button>
+                    ) : null}
+                  </div>
                   {(t.unread_count || 0) > 0 ? (
                     <div className="mt-1 inline-flex rounded-full bg-terracotta px-2 py-0.5 text-[11px] text-white">
                       {t.unread_count}
                     </div>
                   ) : null}
-                </button>
+                </div>
               ))}
             </div>
 

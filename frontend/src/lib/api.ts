@@ -214,6 +214,7 @@ export type ChatThread = {
   name?: string | null;
   title: string;
   is_group: boolean;
+  is_global?: boolean;
   created_by?: ChatUser | null;
   created_at: string;
   updated_at: string;
@@ -271,4 +272,11 @@ export async function readChatThread(threadId: number) {
 
 export async function getChatUnreadCount() {
   return apiFetch<{ unread_count: number }>("/api/chat-threads/unread_count/");
+}
+
+export async function leaveChatThread(threadId: number) {
+  return apiFetch<{ status: string }>(`/api/chat-threads/${threadId}/leave/`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
 }

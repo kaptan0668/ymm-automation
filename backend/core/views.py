@@ -1131,6 +1131,19 @@ class YearLockViewSet(viewsets.ViewSet):
         return Response(YearLockSerializer(obj).data)
 
 
+def _ensure_global_chat_for_user(user):
+    thread, _ = ChatThread.objects.get_or_create(
+        is_global=True,
+        defaults={
+            "name": "Genel Sohbet",
+            "is_group": True,
+            "created_by": user,
+        },
+    )
+    ChatParticipant.objects.get_or_create(thread=thread, user=user)
+    return thread
+
+
 class ChatThreadViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -1138,6 +1151,7 @@ class ChatThreadViewSet(viewsets.ViewSet):
         user = _actor(request)
         if not user:
             return ChatThread.objects.none()
+        _ensure_global_chat_for_user(user)
         qs = (
             ChatThread.objects.filter(participants__user=user)
             .distinct()
@@ -1158,11 +1172,15 @@ class ChatThreadViewSet(viewsets.ViewSet):
             if participant and participant.last_read_at:
                 unread_qs = unread_qs.filter(created_at__gt=participant.last_read_at)
             row.unread_count = unread_qs.count()
+            if row.is_global:
+                row.title = "Genel Sohbet"
+                continue
             if row.is_group:
                 row.title = (row.name or "").strip() or "Grup Sohbeti"
                 continue
             others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
             row.title = ", ".join(others) if others else "Birebir Sohbet"
+        rows = sorted(rows, key=lambda r: 0 if r.is_global else 1)
         return Response(ChatThreadSerializer(rows, many=True).data)
 
     def create(self, request):
@@ -1218,7 +1236,9 @@ class ChatThreadViewSet(viewsets.ViewSet):
             )
         ChatParticipant.objects.bulk_create(participants)
         row = self._queryset(request).filter(id=thread.id).first() or thread
-        if row.is_group:
+        if row.is_global:
+            row.title = "Genel Sohbet"
+        elif row.is_group:
             row.title = (row.name or "").strip() or "Grup Sohbeti"
         else:
             others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
@@ -1259,6 +1279,24 @@ class ChatThreadViewSet(viewsets.ViewSet):
                 unread_qs = unread_qs.filter(created_at__gt=participant.last_read_at)
             total += unread_qs.count()
         return Response({"unread_count": total})
+
+    @action(detail=True, methods=["post"])
+    def leave(self, request, pk=None):
+        user = _actor(request)
+        if not user:
+            raise PermissionDenied("Giriş gerekli.")
+        thread = ChatThread.objects.filter(id=pk).first()
+        if not thread:
+            return Response({"error": "Sohbet bulunamadı."}, status=404)
+        if thread.is_global:
+            return Response({"error": "Genel sohbet kapatılamaz."}, status=400)
+        part = ChatParticipant.objects.filter(thread_id=pk, user=user).first()
+        if not part:
+            return Response({"error": "Bu sohbette değilsiniz."}, status=400)
+        part.delete()
+        if not ChatParticipant.objects.filter(thread_id=pk).exists():
+            thread.delete()
+        return Response({"status": "ok"})
 
 
 class ChatMessageViewSet(viewsets.ViewSet):

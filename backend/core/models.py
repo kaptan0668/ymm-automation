@@ -483,6 +483,7 @@ class Contract(AuditBase):
 class ChatThread(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     is_group = models.BooleanField(default=False, verbose_name="Grup mu")
+    is_global = models.BooleanField(default=False, verbose_name="Genel sohbet mi")
     created_by = models.ForeignKey(
         User,
         null=True,

@@ -546,6 +546,7 @@ class ChatThreadSerializer(serializers.ModelSerializer):
             "name",
             "title",
             "is_group",
+            "is_global",
             "created_by",
             "created_at",
             "updated_at",
