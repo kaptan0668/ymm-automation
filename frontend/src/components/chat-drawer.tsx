@@ -9,6 +9,7 @@ import {
   getChatUnreadCount,
   getChatUsers,
   leaveChatThread,
+  me,
   readChatThread,
   sendChatMessage,
   type ChatMessage,
@@ -38,12 +39,19 @@ export default function ChatDrawer() {
   const [newGroupName, setNewGroupName] = useState("");
   const [groupUserIds, setGroupUserIds] = useState<number[]>([]);
   const [newDirectUserId, setNewDirectUserId] = useState<number | "">("");
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeThreadId) || null,
     [threads, activeThreadId]
   );
+
+  const onlineMap = useMemo(() => {
+    const m = new Map<number, boolean>();
+    for (const u of users) m.set(u.id, Boolean(u.is_online));
+    return m;
+  }, [users]);
 
   async function loadThreads() {
     try {
@@ -55,7 +63,7 @@ export default function ChatDrawer() {
         setActiveThreadId(globalThread ? globalThread.id : data[0]?.id || null);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Sohbetler yüklenemedi.";
+      const msg = err instanceof Error ? err.message : "Mesajlar yuklenemedi.";
       setError(msg);
     }
   }
@@ -87,7 +95,7 @@ export default function ChatDrawer() {
       await readChatThread(threadId);
       await Promise.all([loadThreads(), loadUnread()]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Mesajlar yüklenemedi.";
+      const msg = err instanceof Error ? err.message : "Mesajlar yuklenemedi.";
       setError(msg);
     } finally {
       setLoading(false);
@@ -96,11 +104,21 @@ export default function ChatDrawer() {
   }
 
   useEffect(() => {
+    me().then((x) => {
+      if (x && x.authenticated) {
+        const uid = Number((x as any).id || 0);
+        if (uid > 0) setCurrentUserId(uid);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     loadUnread();
     const timer = setInterval(() => {
       loadUnread();
       if (open) {
         loadThreads();
+        loadUsers();
         if (activeThreadId) loadMessages(activeThreadId);
       }
     }, 8000);
@@ -126,7 +144,7 @@ export default function ChatDrawer() {
       setNewDirectUserId("");
       await loadThreads();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Birebir sohbet açılamadı.");
+      setError(err instanceof Error ? err.message : "Birebir mesaj baslatilamadi.");
     }
   }
 
@@ -139,7 +157,7 @@ export default function ChatDrawer() {
       setGroupUserIds([]);
       await loadThreads();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Grup oluşturulamadı.");
+      setError(err instanceof Error ? err.message : "Grup olusturulamadi.");
     }
   }
 
@@ -158,7 +176,7 @@ export default function ChatDrawer() {
       setFiles([]);
       await loadMessages(activeThreadId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mesaj gönderilemedi.");
+      setError(err instanceof Error ? err.message : "Mesaj gonderilemedi.");
     } finally {
       setSending(false);
     }
@@ -174,8 +192,14 @@ export default function ChatDrawer() {
         setActiveThreadId(globalThread ? globalThread.id : data[0]?.id || null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sohbet kapatılamadı.");
+      setError(err instanceof Error ? err.message : "Mesaj grubu kapatilamadi.");
     }
+  }
+
+  function otherUserId(t: ChatThread) {
+    if (t.is_group || t.is_global) return null;
+    const p = t.participants.find((x) => x.user.id !== currentUserId);
+    return p?.user.id || null;
   }
 
   return (
@@ -184,7 +208,7 @@ export default function ChatDrawer() {
         onClick={() => setOpen((v) => !v)}
         className="print-hide fixed bottom-5 right-5 z-40 rounded-full border border-ink/20 bg-white px-4 py-2 text-sm font-medium shadow-lg"
       >
-        Sohbet
+        Mesajlar
         {unreadCount > 0 ? (
           <span className="ml-2 rounded-full bg-terracotta px-2 py-0.5 text-xs text-white">{unreadCount}</span>
         ) : null}
@@ -193,66 +217,76 @@ export default function ChatDrawer() {
       {open ? (
         <div className="print-hide fixed bottom-20 right-5 z-40 flex h-[72vh] w-[92vw] max-w-5xl overflow-hidden rounded-2xl border border-ink/15 bg-white shadow-2xl">
           <div className="w-72 border-r border-ink/10 p-3">
-            <div className="text-sm font-semibold">Sohbetler</div>
+            <div className="text-sm font-semibold">Mesajlar</div>
             <div className="mt-2 max-h-56 space-y-1 overflow-auto">
-              {threads.map((t) => (
-                <div
-                  key={t.id}
-                  className={`w-full rounded-md px-2 py-2 text-left text-sm ${
-                    activeThreadId === t.id ? "bg-haze" : "hover:bg-haze/70"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <button className="min-w-0 flex-1 text-left" onClick={() => setActiveThreadId(t.id)}>
-                      <div className="truncate font-medium">{t.title || t.name || "Sohbet"}</div>
-                      <div className="text-xs text-ink/60">{formatTs(t.last_message_at || t.updated_at)}</div>
-                    </button>
-                    {!t.is_global ? (
-                      <button
-                        className="text-xs text-ink/50 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLeaveThread(t.id);
-                        }}
-                        title="Sohbeti kapat"
-                      >
-                        x
+              {threads.map((t) => {
+                const uid = otherUserId(t);
+                const isOnline = uid ? Boolean(onlineMap.get(uid)) : false;
+                return (
+                  <div
+                    key={t.id}
+                    className={`w-full rounded-md px-2 py-2 text-left text-sm ${
+                      activeThreadId === t.id ? "bg-haze" : "hover:bg-haze/70"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <button className="min-w-0 flex-1 text-left" onClick={() => setActiveThreadId(t.id)}>
+                        <div className="truncate font-medium">
+                          {!t.is_group && !t.is_global ? (
+                            <span className={`mr-2 inline-block h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-slate-300"}`} />
+                          ) : null}
+                          {t.title || t.name || "Mesaj"}
+                        </div>
+                        <div className="text-xs text-ink/60">{formatTs(t.last_message_at || t.updated_at)}</div>
                       </button>
+                      {!t.is_global ? (
+                        <button
+                          className="text-xs text-ink/50 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLeaveThread(t.id);
+                          }}
+                          title="Mesaji kapat"
+                        >
+                          x
+                        </button>
+                      ) : null}
+                    </div>
+                    {(t.unread_count || 0) > 0 ? (
+                      <div className="mt-1 inline-flex rounded-full bg-terracotta px-2 py-0.5 text-[11px] text-white">
+                        {t.unread_count}
+                      </div>
                     ) : null}
                   </div>
-                  {(t.unread_count || 0) > 0 ? (
-                    <div className="mt-1 inline-flex rounded-full bg-terracotta px-2 py-0.5 text-[11px] text-white">
-                      {t.unread_count}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-3 border-t border-ink/10 pt-3">
-              <div className="text-xs font-medium text-ink/70">Birebir Başlat</div>
+              <div className="text-xs font-medium text-ink/70">Birebir Baslat</div>
               <select
                 className="mt-1 h-9 w-full rounded-md border border-ink/20 bg-white px-2 text-sm"
                 value={newDirectUserId}
                 onChange={(e) => setNewDirectUserId(e.target.value ? Number(e.target.value) : "")}
               >
-                <option value="">Kullanıcı seçin</option>
+                <option value="">Kullanici secin</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
+                    {u.is_online ? "● " : "○ "}
                     {u.username}
                   </option>
                 ))}
               </select>
               <Button className="mt-2 w-full" size="sm" variant="outline" onClick={handleCreateDirect}>
-                Aç
+                Ac
               </Button>
             </div>
 
             <div className="mt-3 border-t border-ink/10 pt-3">
-              <div className="text-xs font-medium text-ink/70">Grup Oluştur</div>
+              <div className="text-xs font-medium text-ink/70">Grup Mesaji Olustur</div>
               <Input
                 className="mt-1"
-                placeholder="Grup adı"
+                placeholder="Grup adi"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
               />
@@ -268,26 +302,27 @@ export default function ChatDrawer() {
                         )
                       }
                     />
-                    <span>{u.username}</span>
+                    <span>
+                      <span className={`mr-1 inline-block h-2 w-2 rounded-full ${u.is_online ? "bg-emerald-500" : "bg-slate-300"}`} />
+                      {u.username}
+                    </span>
                   </label>
                 ))}
               </div>
               <Button className="mt-2 w-full" size="sm" onClick={handleCreateGroup}>
-                Grup Aç
+                Grup Ac
               </Button>
             </div>
           </div>
 
           <div className="flex flex-1 flex-col">
             <div className="border-b border-ink/10 px-4 py-3 text-sm font-semibold">
-              {activeThread ? activeThread.title || activeThread.name || "Sohbet" : "Sohbet seçin"}
+              {activeThread ? activeThread.title || activeThread.name || "Mesaj" : "Mesaj secin"}
             </div>
 
             <div className="flex-1 space-y-2 overflow-auto bg-sand/20 p-4">
-              {loading ? <div className="text-sm text-ink/60">Yükleniyor...</div> : null}
-              {!loading && messages.length === 0 ? (
-                <div className="text-sm text-ink/60">Henüz mesaj yok.</div>
-              ) : null}
+              {loading ? <div className="text-sm text-ink/60">Yukleniyor...</div> : null}
+              {!loading && messages.length === 0 ? <div className="text-sm text-ink/60">Henuz mesaj yok.</div> : null}
               {messages.map((m) => (
                 <div key={m.id} className="rounded-lg border border-ink/10 bg-white p-2">
                   <div className="text-xs text-ink/60">
@@ -317,7 +352,7 @@ export default function ChatDrawer() {
             <div className="border-t border-ink/10 p-3">
               <textarea
                 className="h-20 w-full rounded-md border border-ink/20 px-3 py-2 text-sm"
-                placeholder="Mesaj yazın..."
+                placeholder="Mesaj yazin..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
               />
@@ -340,7 +375,7 @@ export default function ChatDrawer() {
                   Kapat
                 </Button>
                 <Button onClick={handleSend} disabled={!activeThreadId || sending}>
-                  {sending ? "Gönderiliyor..." : "Gönder"}
+                  {sending ? "Gonderiliyor..." : "Gonder"}
                 </Button>
               </div>
             </div>

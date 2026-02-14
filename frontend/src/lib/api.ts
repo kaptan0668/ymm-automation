@@ -84,7 +84,7 @@ export async function login(username: string, password: string) {
 }
 
 export async function me() {
-  return apiFetch<{ authenticated: boolean; username?: string; email?: string; is_staff?: boolean; is_superuser?: boolean }>(
+  return apiFetch<{ authenticated: boolean; id?: number; username?: string; email?: string; is_staff?: boolean; is_superuser?: boolean }>(
     "/api/auth/me/"
   );
 }
@@ -218,6 +218,8 @@ export type ChatUser = {
   first_name?: string;
   last_name?: string;
   email?: string;
+  is_online?: boolean;
+  last_seen_at?: string | null;
 };
 
 export type ChatParticipant = {

@@ -5,6 +5,7 @@ import csv
 import boto3
 from botocore.client import Config
 from io import BytesIO
+from datetime import timedelta
 from PyPDF2 import PdfReader
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -1272,7 +1273,7 @@ def _ensure_global_chat_for_user(user):
     thread, _ = ChatThread.objects.get_or_create(
         is_global=True,
         defaults={
-            "name": "Genel Sohbet",
+            "name": "Genel Mesajlar",
             "is_group": True,
             "created_by": user,
         },
@@ -1310,13 +1311,13 @@ class ChatThreadViewSet(viewsets.ViewSet):
                 unread_qs = unread_qs.filter(created_at__gt=participant.last_read_at)
             row.unread_count = unread_qs.count()
             if row.is_global:
-                row.title = "Genel Sohbet"
+                row.title = "Genel Mesajlar"
                 continue
             if row.is_group:
-                row.title = (row.name or "").strip() or "Grup Sohbeti"
+                row.title = (row.name or "").strip() or "Grup Mesajları"
                 continue
             others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
-            row.title = ", ".join(others) if others else "Birebir Sohbet"
+            row.title = ", ".join(others) if others else "Birebir Mesaj"
         rows = sorted(rows, key=lambda r: 0 if r.is_global else 1)
         return Response(ChatThreadSerializer(rows, many=True).data)
 
@@ -1342,7 +1343,7 @@ class ChatThreadViewSet(viewsets.ViewSet):
             if existing:
                 row = self._queryset(request).filter(id=existing.id).first() or existing
                 others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
-                row.title = ", ".join(others) if others else "Birebir Sohbet"
+                row.title = ", ".join(others) if others else "Birebir Mesaj"
                 return Response(ChatThreadSerializer(row).data)
 
         thread = ChatThread.objects.create(
@@ -1374,12 +1375,12 @@ class ChatThreadViewSet(viewsets.ViewSet):
         ChatParticipant.objects.bulk_create(participants)
         row = self._queryset(request).filter(id=thread.id).first() or thread
         if row.is_global:
-            row.title = "Genel Sohbet"
+            row.title = "Genel Mesajlar"
         elif row.is_group:
-            row.title = (row.name or "").strip() or "Grup Sohbeti"
+            row.title = (row.name or "").strip() or "Grup Mesajları"
         else:
             others = [p.user.username for p in row.participants.all() if p.user_id != user.id]
-            row.title = ", ".join(others) if others else "Birebir Sohbet"
+            row.title = ", ".join(others) if others else "Birebir Mesaj"
         return Response(ChatThreadSerializer(row).data, status=201)
 
     @action(detail=False, methods=["get"])
@@ -1388,7 +1389,27 @@ class ChatThreadViewSet(viewsets.ViewSet):
         if not user:
             raise PermissionDenied("Giriş gerekli.")
         qs = User.objects.filter(is_active=True).exclude(id=user.id).order_by("username")
-        return Response(UserMiniSerializer(qs, many=True).data)
+        threshold = timezone.now() - timedelta(minutes=5)
+        rows = []
+        for u in qs:
+            last_seen = (
+                ChatParticipant.objects.filter(user=u)
+                .order_by("-last_read_at")
+                .values_list("last_read_at", flat=True)
+                .first()
+            )
+            rows.append(
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "first_name": u.first_name,
+                    "last_name": u.last_name,
+                    "email": u.email,
+                    "is_online": bool(last_seen and last_seen >= threshold),
+                    "last_seen_at": last_seen,
+                }
+            )
+        return Response(rows)
 
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):
@@ -1397,7 +1418,7 @@ class ChatThreadViewSet(viewsets.ViewSet):
             raise PermissionDenied("Giriş gerekli.")
         part = ChatParticipant.objects.filter(thread_id=pk, user=user).first()
         if not part:
-            raise PermissionDenied("Bu sohbete erişim yetkiniz yok.")
+            raise PermissionDenied("Bu mesaja erişim yetkiniz yok.")
         part.last_read_at = timezone.now()
         part.save(update_fields=["last_read_at"])
         return Response({"status": "ok"})
@@ -1424,12 +1445,12 @@ class ChatThreadViewSet(viewsets.ViewSet):
             raise PermissionDenied("Giriş gerekli.")
         thread = ChatThread.objects.filter(id=pk).first()
         if not thread:
-            return Response({"error": "Sohbet bulunamadı."}, status=404)
+            return Response({"error": "Mesaj bulunamadı."}, status=404)
         if thread.is_global:
-            return Response({"error": "Genel sohbet kapatılamaz."}, status=400)
+            return Response({"error": "Genel mesaj kapatılamaz."}, status=400)
         part = ChatParticipant.objects.filter(thread_id=pk, user=user).first()
         if not part:
-            return Response({"error": "Bu sohbette değilsiniz."}, status=400)
+            return Response({"error": "Bu mesaj grubunda değilsiniz."}, status=400)
         part.delete()
         if not ChatParticipant.objects.filter(thread_id=pk).exists():
             thread.delete()
@@ -1445,7 +1466,7 @@ class ChatMessageViewSet(viewsets.ViewSet):
             raise PermissionDenied("Giriş gerekli.")
         part = ChatParticipant.objects.filter(thread_id=thread_id, user=user).first()
         if not part:
-            raise PermissionDenied("Bu sohbete erişim yetkiniz yok.")
+            raise PermissionDenied("Bu mesaja erişim yetkiniz yok.")
         return user, part
 
     def list(self, request):

@@ -575,7 +575,7 @@ class ChatThreadCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"name": "Grup adı zorunludur."})
         else:
             if len(user_ids) != 1:
-                raise serializers.ValidationError({"user_ids": "Birebir sohbet için tek kullanıcı seçin."})
+                raise serializers.ValidationError({"user_ids": "Birebir mesaj için tek kullanıcı seçin."})
         return attrs
 
 

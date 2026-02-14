@@ -288,8 +288,7 @@ export default function ListsPage() {
   return (
     <div className="space-y-5 report-print">
       <div>
-        <h1 className="text-3xl font-semibold">Liste Raporlari</h1>
-        <p className="text-ink/60">A4 uyumlu satir bazli listeler. PDF icin Yazdir/Save as PDF kullanin.</p>
+        <h1 className="text-3xl font-semibold">{pageTitle}</h1>
       </div>
 
       <div className="flex gap-2 print-hide">
@@ -426,3 +425,9 @@ export default function ListsPage() {
     </div>
   );
 }
+  const pageTitle = useMemo(() => {
+    if (tab === "customers") return "Mukellef Listesi";
+    if (tab === "documents") return "Evrak Listesi";
+    if (tab === "reports") return "Rapor Listesi";
+    return "Sozlesme Listesi";
+  }, [tab]);
