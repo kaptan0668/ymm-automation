@@ -182,7 +182,7 @@ export default function ChatDrawer() {
     <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-40 rounded-full border border-ink/20 bg-white px-4 py-2 text-sm font-medium shadow-lg"
+        className="print-hide fixed bottom-5 right-5 z-40 rounded-full border border-ink/20 bg-white px-4 py-2 text-sm font-medium shadow-lg"
       >
         Sohbet
         {unreadCount > 0 ? (
@@ -191,7 +191,7 @@ export default function ChatDrawer() {
       </button>
 
       {open ? (
-        <div className="fixed bottom-20 right-5 z-40 flex h-[72vh] w-[92vw] max-w-5xl overflow-hidden rounded-2xl border border-ink/15 bg-white shadow-2xl">
+        <div className="print-hide fixed bottom-20 right-5 z-40 flex h-[72vh] w-[92vw] max-w-5xl overflow-hidden rounded-2xl border border-ink/15 bg-white shadow-2xl">
           <div className="w-72 border-r border-ink/10 p-3">
             <div className="text-sm font-semibold">Sohbetler</div>
             <div className="mt-2 max-h-56 space-y-1 overflow-auto">

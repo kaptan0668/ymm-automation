@@ -56,4 +56,28 @@ body::before {
   .print-area .bg-white\/80 {
     background: white !important;
   }
+  .report-print {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .report-print table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11px !important;
+  }
+  .report-print th,
+  .report-print td {
+    border: 1px solid #d2d2d2 !important;
+    padding: 6px !important;
+    vertical-align: top !important;
+  }
+  .report-print .rounded-lg,
+  .report-print .rounded-2xl {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 }
