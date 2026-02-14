@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { getSettings } from "@/lib/api";
 
 const items = [
   { href: "/", label: "Gosterge" },
-  { href: "/customers", label: "Musteri" },
+  { href: "/customers", label: "Mukellef" },
   { href: "/contracts", label: "Sozlesmeler" },
   { href: "/documents", label: "Evrak" },
   { href: "/reports", label: "Rapor" },
@@ -76,3 +76,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

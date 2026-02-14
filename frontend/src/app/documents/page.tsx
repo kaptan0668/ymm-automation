@@ -281,7 +281,7 @@ export default function DocumentsPage() {
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
-          <option value="">Müşteri seç</option>
+          <option value="">Mükellef seç</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
@@ -416,7 +416,7 @@ export default function DocumentsPage() {
           value={filterCustomer}
           onChange={(e) => setFilterCustomer(e.target.value)}
         >
-          <option value="">Müşteri (tüm)</option>
+          <option value="">Mükellef (tüm)</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -451,7 +451,7 @@ export default function DocumentsPage() {
         >
             <option value="date_desc">Tarih (yeni)</option>
             <option value="date_asc">Tarih (eski)</option>
-            <option value="customer_asc">Müşteri A-Z</option>
+            <option value="customer_asc">Mükellef A-Z</option>
           </select>
         </div>
 
@@ -465,7 +465,7 @@ export default function DocumentsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Tarih</th>
                 <th className="px-4 py-3 font-medium">Evrak No</th>
-                <th className="px-4 py-3 font-medium">Müşteri</th>
+                <th className="px-4 py-3 font-medium">Mükellef</th>
                 <th className="px-4 py-3 font-medium">Konu</th>
                 <th className="px-4 py-3 font-medium">Durum</th>
                 <th className="px-4 py-3 font-medium">Detay</th>
@@ -532,4 +532,5 @@ export default function DocumentsPage() {
     </div>
   );
 }
+
 

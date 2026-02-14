@@ -73,6 +73,7 @@ type NoteRow = {
   text: string;
   created_at: string;
   mail_sent_at?: string | null;
+  mail_sent_to?: string[];
   files?: FileRow[];
   source_label?: string;
   source_code?: string;
@@ -119,10 +120,11 @@ export default function CustomerCardPage() {
   const [manualEmails, setManualEmails] = useState("");
   const [recipientEmails, setRecipientEmails] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
-  const [newNoteSubject, setNewNoteSubject] = useState("Bu müşteri hakkında");
+  const [newNoteSubject, setNewNoteSubject] = useState("Bu mükellef hakkında");
   const [newNoteText, setNewNoteText] = useState("");
   const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
   const [noteActionLoading, setNoteActionLoading] = useState<"save" | "send" | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [noteContactName, setNoteContactName] = useState("");
   const [noteContactEmail, setNoteContactEmail] = useState("");
 
@@ -247,6 +249,11 @@ export default function CustomerCardPage() {
   }
   async function handleSaveNote(sendMail: boolean) {
     if (!customer || !newNoteText.trim()) return;
+    setModalError(null);
+    if (sendMail && !recipientEmails.trim()) {
+      setModalError("Mail göndermek için en az bir alıcı e-posta girin.");
+      return;
+    }
     setNoteActionLoading(sendMail ? "send" : "save");
     setNoteNotice(null);
     try {
@@ -254,7 +261,7 @@ export default function CustomerCardPage() {
         method: "POST",
         body: JSON.stringify({
           customer: customer.id,
-          subject: newNoteSubject.trim() || "Bu müşteri hakkında",
+          subject: newNoteSubject.trim() || "Bu mükellef hakkında",
           text: newNoteText.trim()
         })
       });
@@ -270,7 +277,7 @@ export default function CustomerCardPage() {
         const mailRes = await apiFetch<{ sent_to?: string[] }>(`/api/notes/${created.id}/send_mail/`, {
           method: "POST",
           body: JSON.stringify({
-            subject: newNoteSubject.trim() || "Bu müşteri hakkında",
+            subject: newNoteSubject.trim() || "Bu mükellef hakkında",
             note_contact_name: noteContactName || null,
             note_contact_email: noteContactEmail || null,
             extra_emails: manualEmails || null,
@@ -296,6 +303,7 @@ export default function CustomerCardPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNoteNotice(`Not işlemi başarısız: ${msg}`);
+      setModalError(`Not işlemi başarısız: ${msg}`);
     } finally {
       setNoteActionLoading(null);
     }
@@ -322,7 +330,7 @@ export default function CustomerCardPage() {
       <div className="rounded-2xl border border-ink/10 bg-white/80 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-widest text-ink/50">Müşteri Kartı</div>
+            <div className="text-xs uppercase tracking-widest text-ink/50">Mükellef Kartı</div>
             <h1 className="text-3xl font-semibold">{customer.name}</h1>
             <div className="mt-1 text-sm text-ink/60">
               {customer.identity_type === "TCKN" ? `TCKN: ${customer.tckn || "-"}` : `Vergi No: ${customer.tax_no || "-"}`}
@@ -387,6 +395,9 @@ export default function CustomerCardPage() {
                   Kayıt: {new Date(n.created_at).toLocaleString("tr-TR")}
                   {n.mail_sent_at ? ` • Mail: ${new Date(n.mail_sent_at).toLocaleString("tr-TR")}` : ""}
                 </div>
+                {n.mail_sent_to && n.mail_sent_to.length > 0 ? (
+                  <div className="mt-1 text-xs text-ink/60">Gönderilen: {n.mail_sent_to.join(", ")}</div>
+                ) : null}
                 {n.source_label || n.source_code ? (
                   <div className="mt-1 text-xs text-ink/60">
                     {n.source_label || "Kayıt"}: {n.source_code || "-"}
@@ -397,9 +408,24 @@ export default function CustomerCardPage() {
                 {n.files && n.files.length > 0 ? (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {n.files.map((f) => (
-                      <a key={f.id} className="text-xs text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
-                        {f.filename}
-                      </a>
+                      <div key={f.id} className="flex items-center justify-between rounded border border-ink/10 p-1">
+                        <a className="text-xs text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                          {f.filename}
+                        </a>
+                        {isStaff ? (
+                          <button
+                            className="text-[11px] text-red-600"
+                            onClick={async () => {
+                              if (!confirm("Bu not dosyası silinsin mi?")) return;
+                              await apiFetch(`/api/files/${f.id}/`, { method: "DELETE" });
+                              const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?customer=${id}`);
+                              setNotes(updatedNotes);
+                            }}
+                          >
+                            Sil
+                          </button>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 ) : null}
@@ -445,12 +471,19 @@ export default function CustomerCardPage() {
             {newNoteFiles.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {newNoteFiles.map((f) => (
-                  <span key={`${f.name}-${f.size}`} className="rounded-full border border-ink/20 px-2 py-0.5 text-xs">
+                  <span key={`${f.name}-${f.size}`} className="inline-flex items-center gap-2 rounded-full border border-ink/20 px-2 py-0.5 text-xs">
                     {f.name}
+                    <button
+                      className="text-red-600"
+                      onClick={() => setNewNoteFiles((prev) => prev.filter((x) => !(x.name === f.name && x.size === f.size)))}
+                    >
+                      x
+                    </button>
                   </span>
                 ))}
               </div>
             ) : null}
+            {modalError ? <div className="mt-2 text-sm text-red-600">{modalError}</div> : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => setNoteModalOpen(false)} disabled={noteActionLoading !== null}>
                 İptal
@@ -497,8 +530,8 @@ export default function CustomerCardPage() {
 
       {editing ? (
         <form onSubmit={handleSave} className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
-          <div className="text-sm text-ink/60">Müşteri bilgilerini düzenle</div>
-          <Input placeholder="Müşteri adı" value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="text-sm text-ink/60">Mükellef bilgilerini düzenle</div>
+          <Input placeholder="Mükellef adı" value={name} onChange={(e) => setName(e.target.value)} />
           <select
             className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
             value={identityType}
@@ -553,7 +586,7 @@ export default function CustomerCardPage() {
         </div>
         {showContracts ? (
           contracts.length === 0 ? (
-            <EmptyState title="Sözleşme yok" subtitle="Bu müşteri için kayıtlı sözleşme bulunamadı." />
+            <EmptyState title="Sözleşme yok" subtitle="Bu mükellef için kayıtlı sözleşme bulunamadı." />
           ) : (
             <div className="space-y-3">
               {contracts.map((c) => (
@@ -608,7 +641,7 @@ export default function CustomerCardPage() {
         </div>
         {showDocs ? (
           docs.length === 0 ? (
-            <EmptyState title="Evrak yok" subtitle="Bu müşteri için kayıtlı evrak bulunamadı." />
+            <EmptyState title="Evrak yok" subtitle="Bu mükellef için kayıtlı evrak bulunamadı." />
           ) : (
             <div className="space-y-3">
               {docs.map((d) => (
@@ -669,7 +702,7 @@ export default function CustomerCardPage() {
         </div>
         {showReports ? (
           reports.length === 0 ? (
-            <EmptyState title="Rapor yok" subtitle="Bu müşteri için kayıtlı rapor bulunamadı." />
+            <EmptyState title="Rapor yok" subtitle="Bu mükellef için kayıtlı rapor bulunamadı." />
           ) : (
             <div className="space-y-3">
               {reports.map((r) => (
@@ -747,7 +780,7 @@ export default function CustomerCardPage() {
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {files.length === 0 ? (
-                <EmptyState title="Dosya yok" subtitle="Müşteriye ait dosya bulunamadı." />
+                <EmptyState title="Dosya yok" subtitle="Mükellefye ait dosya bulunamadı." />
               ) : (
                 files.map((f) => (
                   <div key={f.id} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white p-3">
@@ -769,6 +802,7 @@ export default function CustomerCardPage() {
     </div>
   );
 }
+
 
 
 

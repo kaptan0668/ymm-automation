@@ -158,7 +158,7 @@ export default function ContractsPage() {
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
         >
-          <option value="">Müşteri seç</option>
+          <option value="">Mükellef seç</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.tax_no})
@@ -237,7 +237,7 @@ export default function ContractsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Sözleşme Tarihi</th>
                 <th className="px-4 py-3 font-medium">Sözleşme No</th>
-                <th className="px-4 py-3 font-medium">Müşteri</th>
+                <th className="px-4 py-3 font-medium">Mükellef</th>
                 <th className="px-4 py-3 font-medium">Dönemi</th>
                 <th className="px-4 py-3 font-medium">Sözleşme Türü</th>
                 <th className="px-4 py-3 font-medium">Durum</th>
@@ -284,6 +284,7 @@ export default function ContractsPage() {
     </div>
   );
 }
+
 
 
 

@@ -133,16 +133,16 @@ export default function CustomersPage() {
       setContactPhone("");
       setContactEmail("");
       await load();
-      setNotice("Müşteri eklendi.");
+      setNotice("Mükellef eklendi.");
     } catch {
-      setNotice("Müşteri eklenemedi.");
+      setNotice("Mükellef eklenemedi.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Müşteri silinsin mi?")) return;
+    if (!confirm("Mükellef silinsin mi?")) return;
     try {
       await apiFetch(`/api/customers/${id}/`, { method: "DELETE" });
       await load();
@@ -155,12 +155,12 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold">Müşteriler</h1>
-        <p className="text-ink/60">Müşteri listesi ve kartlar.</p>
+        <h1 className="text-3xl font-semibold">Mükellefler</h1>
+        <p className="text-ink/60">Mükellef listesi ve kartlar.</p>
       </div>
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded-lg border border-ink/10 bg-white p-4 md:grid-cols-3">
-        <Input placeholder="Müşteri adı" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input placeholder="Mükellef adı" value={name} onChange={(e) => setName(e.target.value)} />
         <select
           className="h-10 rounded-md border border-ink/20 bg-white px-3 text-sm"
           value={identityType}
@@ -203,7 +203,7 @@ export default function CustomersPage() {
             (identityType === "VKN" ? onlyDigits(taxNo).length !== 10 : onlyDigits(tckn).length !== 11)
           }
         >
-          {saving ? "Kaydediliyor..." : "Müşteri Ekle"}
+          {saving ? "Kaydediliyor..." : "Mükellef Ekle"}
         </Button>
       </form>
       {notice ? <div className="text-sm text-ink/70">{notice}</div> : null}
@@ -216,7 +216,7 @@ export default function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-haze text-left">
               <tr>
-                <th className="px-4 py-3 font-medium">Müşteri</th>
+                <th className="px-4 py-3 font-medium">Mükellef</th>
                 <th className="px-4 py-3 font-medium">Kimlik</th>
                 <th className="px-4 py-3 font-medium">Kart</th>
                 <th className="px-4 py-3 font-medium">Düzenle</th>
@@ -254,6 +254,7 @@ export default function CustomersPage() {
     </div>
   );
 }
+
 
 
 

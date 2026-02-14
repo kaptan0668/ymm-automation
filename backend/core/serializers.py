@@ -136,6 +136,7 @@ class NoteSerializer(serializers.ModelSerializer):
             "subject",
             "text",
             "mail_sent_at",
+            "mail_sent_to",
             "customer",
             "document",
             "report",

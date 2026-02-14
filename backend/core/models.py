@@ -387,6 +387,7 @@ class Note(AuditBase):
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not konusu")
     text = models.TextField(verbose_name="Not metni")
     mail_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="Mail gönderim zamanı")
+    mail_sent_to = models.JSONField(default=list, blank=True, verbose_name="Mail alıcıları")
     customer = models.ForeignKey(
         "Customer",
         null=True,

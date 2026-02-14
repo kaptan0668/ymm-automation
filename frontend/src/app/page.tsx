@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -109,7 +109,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
-            <div className="text-sm text-ink/60">Müşteriler</div>
+            <div className="text-sm text-ink/60">Mükellefler</div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{loading ? "-" : customers.length}</div>
@@ -140,7 +140,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              <Link className="text-sm text-terracotta" href="/customers">Müşteri ekle</Link>
+              <Link className="text-sm text-terracotta" href="/customers">Mükellef ekle</Link>
               <Link className="text-sm text-terracotta" href="/contracts">Sözleşme ekle</Link>
               <Link className="text-sm text-terracotta" href="/documents">Evrak ekle</Link>
               <Link className="text-sm text-terracotta" href="/reports">Rapor ekle</Link>
@@ -212,4 +212,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 

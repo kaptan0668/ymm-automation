@@ -820,7 +820,8 @@ class NoteViewSet(AuditViewSet):
                 contact_name=contact_name,
             )
             note.mail_sent_at = timezone.now()
-            note.save(update_fields=["mail_sent_at", "updated_at"])
+            note.mail_sent_to = result.get("sent_to", [])
+            note.save(update_fields=["mail_sent_at", "mail_sent_to", "updated_at"])
         except Exception as exc:
             return Response({"error": f"Mail gönderilemedi: {str(exc)}"}, status=400)
         return Response({"status": "ok", **result})

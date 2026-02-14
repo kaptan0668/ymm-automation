@@ -48,6 +48,7 @@ type NoteRow = {
   text: string;
   created_at: string;
   mail_sent_at?: string | null;
+  mail_sent_to?: string[];
   files?: FileRow[];
   source_label?: string;
   source_code?: string;
@@ -100,6 +101,7 @@ export default function DocumentDetailPage() {
   const [newNoteText, setNewNoteText] = useState("");
   const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
   const [noteActionLoading, setNoteActionLoading] = useState<"save" | "send" | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerMini | null>(null);
 
   function uniqueEmails(values: Array<string | undefined | null>) {
@@ -247,6 +249,11 @@ export default function DocumentDetailPage() {
 
   async function handleSaveNote(sendMail: boolean) {
     if (!doc || !newNoteText.trim()) return;
+    setModalError(null);
+    if (sendMail && !recipientEmails.trim()) {
+      setModalError("Mail göndermek için en az bir alıcı e-posta girin.");
+      return;
+    }
     setNoteActionLoading(sendMail ? "send" : "save");
     setNoteNotice(null);
     try {
@@ -296,6 +303,7 @@ export default function DocumentDetailPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNoteNotice(`Not işlemi başarısız: ${msg}`);
+      setModalError(`Not işlemi başarısız: ${msg}`);
     } finally {
       setNoteActionLoading(null);
     }
@@ -321,7 +329,7 @@ export default function DocumentDetailPage() {
           <div className="flex items-center gap-2">
             <BackButton />
             <Link className="text-sm text-terracotta print-hide" href={`/customers/${doc.customer}`}>
-              Müşteri Kartı
+              Mükellef Kartı
             </Link>
             <Button className="print-hide" variant="outline" onClick={handleToggleStatus}>
               {doc.status === "DONE" ? "Geri al" : "Tamamla"}
@@ -486,20 +494,32 @@ export default function DocumentDetailPage() {
                   Kayıt: {new Date(n.created_at).toLocaleString("tr-TR")}
                   {n.mail_sent_at ? ` • Mail: ${new Date(n.mail_sent_at).toLocaleString("tr-TR")}` : ""}
                 </div>
+                {n.mail_sent_to && n.mail_sent_to.length > 0 ? (
+                  <div className="mt-1 text-xs text-ink/60">Gönderilen: {n.mail_sent_to.join(", ")}</div>
+                ) : null}
                 {n.subject ? <div className="mt-1 font-medium text-ink/80">Konu: {n.subject}</div> : null}
                 <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
                 {n.files && n.files.length > 0 ? (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {n.files.map((f) => (
-                      <a
-                        key={f.id}
-                        className="text-xs text-terracotta"
-                        href={f.signed_url ?? f.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {f.filename}
-                      </a>
+                      <div key={f.id} className="flex items-center justify-between rounded border border-ink/10 p-1">
+                        <a className="text-xs text-terracotta" href={f.signed_url ?? f.url} target="_blank" rel="noreferrer">
+                          {f.filename}
+                        </a>
+                        {isSuperuser ? (
+                          <button
+                            className="text-[11px] text-red-600"
+                            onClick={async () => {
+                              if (!confirm("Bu not dosyası silinsin mi?")) return;
+                              await apiFetch(`/api/files/${f.id}/`, { method: "DELETE" });
+                              const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?document=${id}`);
+                              setNotes(updatedNotes);
+                            }}
+                          >
+                            Sil
+                          </button>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 ) : null}
@@ -560,12 +580,19 @@ export default function DocumentDetailPage() {
             {newNoteFiles.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {newNoteFiles.map((f) => (
-                  <span key={`${f.name}-${f.size}`} className="rounded-full border border-ink/20 px-2 py-0.5 text-xs">
+                  <span key={`${f.name}-${f.size}`} className="inline-flex items-center gap-2 rounded-full border border-ink/20 px-2 py-0.5 text-xs">
                     {f.name}
+                    <button
+                      className="text-red-600"
+                      onClick={() => setNewNoteFiles((prev) => prev.filter((x) => !(x.name === f.name && x.size === f.size)))}
+                    >
+                      x
+                    </button>
                   </span>
                 ))}
               </div>
             ) : null}
+            {modalError ? <div className="mt-2 text-sm text-red-600">{modalError}</div> : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => setNoteModalOpen(false)} disabled={noteActionLoading !== null}>
                 İptal
@@ -636,3 +663,4 @@ export default function DocumentDetailPage() {
     </div>
   );
 }
+
