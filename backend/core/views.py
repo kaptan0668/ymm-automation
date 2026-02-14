@@ -15,6 +15,7 @@ from django.core.mail import EmailMessage
 from django.core.mail import get_connection
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.db.models import Q
 from django.http import FileResponse
 from django.utils import timezone
 from .models import (
@@ -725,7 +726,12 @@ class NoteViewSet(AuditViewSet):
         report = self.request.query_params.get("report")
         contract = self.request.query_params.get("contract")
         if customer:
-            qs = qs.filter(customer_id=customer)
+            qs = qs.filter(
+                Q(customer_id=customer)
+                | Q(document__customer_id=customer)
+                | Q(report__customer_id=customer)
+                | Q(contract__customer_id=customer)
+            )
         if document:
             qs = qs.filter(document_id=document)
         if report:
@@ -757,6 +763,9 @@ class NoteViewSet(AuditViewSet):
         note = self.get_object()
         try:
             entity_label, entity_code, to_emails, contact_name = _resolve_note_target(note, request.data)
+            explicit_recipients = request.data.get("recipients")
+            if explicit_recipients is not None:
+                to_emails = explicit_recipients
             files_qs = File.objects.filter(note_id=note.id, note_scope=True)
             result = _send_note_email(
                 request=request,

@@ -92,6 +92,7 @@ export default function DocumentDetailPage() {
   const [noteContactName, setNoteContactName] = useState("");
   const [noteContactEmail, setNoteContactEmail] = useState("");
   const [manualEmails, setManualEmails] = useState("");
+  const [recipientEmails, setRecipientEmails] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [newNoteSubject, setNewNoteSubject] = useState("Bu evrak hakkında");
   const [newNoteText, setNewNoteText] = useState("");
@@ -131,8 +132,11 @@ export default function DocumentDetailPage() {
         setNoteContactEmail(d.note_contact_email || "");
         const c = await apiFetch<CustomerMini>(`/api/customers/${d.customer}/`);
         setCustomerInfo(c);
-        if (!d.note_contact_name) setNoteContactName(c.contact_person || "");
-        if (!d.note_contact_email) setNoteContactEmail(c.contact_email || c.email || "");
+        const defaultName = d.note_contact_name || c.contact_person || "";
+        const defaultEmail = d.note_contact_email || c.contact_email || c.email || "";
+        setNoteContactName(defaultName);
+        setNoteContactEmail(defaultEmail);
+        setRecipientEmails(defaultEmail);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -251,7 +255,8 @@ export default function DocumentDetailPage() {
             subject: newNoteSubject.trim() || "Bu evrak hakkında",
             note_contact_name: noteContactName || null,
             note_contact_email: noteContactEmail || null,
-            extra_emails: manualEmails || null
+            extra_emails: manualEmails || null,
+            recipients: recipientEmails || null
           })
         });
       }
@@ -467,6 +472,21 @@ export default function DocumentDetailPage() {
                     ))}
                   </div>
                 ) : null}
+                {isSuperuser ? (
+                  <div className="mt-2">
+                    <button
+                      className="text-xs text-red-600"
+                      onClick={async () => {
+                        if (!confirm("Bu not silinsin mi?")) return;
+                        await apiFetch(`/api/notes/${n.id}/`, { method: "DELETE" });
+                        const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?document=${id}`);
+                        setNotes(updatedNotes);
+                      }}
+                    >
+                      Notu Sil
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -482,6 +502,12 @@ export default function DocumentDetailPage() {
               placeholder="Konu"
               value={newNoteSubject}
               onChange={(e) => setNewNoteSubject(e.target.value)}
+            />
+            <Input
+              className="mt-3"
+              placeholder="Alıcı e-postalar (virgülle)"
+              value={recipientEmails}
+              onChange={(e) => setRecipientEmails(e.target.value)}
             />
             <textarea
               className="mt-3 h-40 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"

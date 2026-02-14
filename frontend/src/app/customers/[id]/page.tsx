@@ -115,6 +115,7 @@ export default function CustomerCardPage() {
   const [cardNote, setCardNote] = useState("");
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
   const [manualEmails, setManualEmails] = useState("");
+  const [recipientEmails, setRecipientEmails] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [newNoteSubject, setNewNoteSubject] = useState("Bu müşteri hakkında");
   const [newNoteText, setNewNoteText] = useState("");
@@ -162,7 +163,9 @@ export default function CustomerCardPage() {
         setContactPhone(formatPhoneInput(c.contact_phone || ""));
         setContactEmail(c.contact_email || "");
         setNoteContactName(c.contact_person || "");
-        setNoteContactEmail(c.contact_email || c.email || "");
+        const defaultEmail = c.contact_email || c.email || "";
+        setNoteContactEmail(defaultEmail);
+        setRecipientEmails(defaultEmail);
         setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -254,7 +257,8 @@ export default function CustomerCardPage() {
             subject: newNoteSubject.trim() || "Bu müşteri hakkında",
             note_contact_name: noteContactName || null,
             note_contact_email: noteContactEmail || null,
-            extra_emails: manualEmails || null
+            extra_emails: manualEmails || null,
+            recipients: recipientEmails || null
           })
         });
       }
@@ -367,6 +371,21 @@ export default function CustomerCardPage() {
                     ))}
                   </div>
                 ) : null}
+                {isStaff ? (
+                  <div className="mt-2">
+                    <button
+                      className="text-xs text-red-600"
+                      onClick={async () => {
+                        if (!confirm("Bu not silinsin mi?")) return;
+                        await apiFetch(`/api/notes/${n.id}/`, { method: "DELETE" });
+                        const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?customer=${id}`);
+                        setNotes(updatedNotes);
+                      }}
+                    >
+                      Notu Sil
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -378,6 +397,12 @@ export default function CustomerCardPage() {
           <div className="w-full max-w-2xl rounded-2xl border border-ink/10 bg-white p-6 shadow-xl">
             <div className="text-base font-semibold">Not Ekle</div>
             <Input className="mt-3" placeholder="Konu" value={newNoteSubject} onChange={(e) => setNewNoteSubject(e.target.value)} />
+            <Input
+              className="mt-3"
+              placeholder="Alıcı e-postalar (virgülle)"
+              value={recipientEmails}
+              onChange={(e) => setRecipientEmails(e.target.value)}
+            />
             <textarea
               className="mt-3 h-40 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
               placeholder="Not metni"

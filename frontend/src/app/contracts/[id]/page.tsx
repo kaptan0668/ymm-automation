@@ -88,6 +88,7 @@ export default function ContractDetailPage() {
   const [noteContactName, setNoteContactName] = useState("");
   const [noteContactEmail, setNoteContactEmail] = useState("");
   const [manualEmails, setManualEmails] = useState("");
+  const [recipientEmails, setRecipientEmails] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [newNoteSubject, setNewNoteSubject] = useState("Bu sözleşme hakkında");
   const [newNoteText, setNewNoteText] = useState("");
@@ -111,8 +112,11 @@ export default function ContractDetailPage() {
         setReports(reps);
         setNotes(n);
         setCardNote(c.card_note || "");
-        setNoteContactName(c.note_contact_name || cust.contact_person || "");
-        setNoteContactEmail(c.note_contact_email || cust.contact_email || cust.email || "");
+        const defaultName = c.note_contact_name || cust.contact_person || "";
+        const defaultEmail = c.note_contact_email || cust.contact_email || cust.email || "";
+        setNoteContactName(defaultName);
+        setNoteContactEmail(defaultEmail);
+        setRecipientEmails(defaultEmail);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -149,7 +153,8 @@ export default function ContractDetailPage() {
             subject: newNoteSubject.trim() || "Bu sözleşme hakkında",
             note_contact_name: noteContactName || null,
             note_contact_email: noteContactEmail || null,
-            extra_emails: manualEmails || null
+            extra_emails: manualEmails || null,
+            recipients: recipientEmails || null
           })
         });
       }
@@ -301,6 +306,19 @@ export default function ContractDetailPage() {
                     ))}
                   </div>
                 ) : null}
+                <div className="mt-2">
+                  <button
+                    className="text-xs text-red-600"
+                    onClick={async () => {
+                      if (!confirm("Bu not silinsin mi?")) return;
+                      await apiFetch(`/api/notes/${n.id}/`, { method: "DELETE" });
+                      const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?contract=${id}`);
+                      setNotes(updatedNotes);
+                    }}
+                  >
+                    Notu Sil
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -316,6 +334,12 @@ export default function ContractDetailPage() {
               placeholder="Konu"
               value={newNoteSubject}
               onChange={(e) => setNewNoteSubject(e.target.value)}
+            />
+            <Input
+              className="mt-3"
+              placeholder="Alıcı e-postalar (virgülle)"
+              value={recipientEmails}
+              onChange={(e) => setRecipientEmails(e.target.value)}
             />
             <textarea
               className="mt-3 h-40 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
