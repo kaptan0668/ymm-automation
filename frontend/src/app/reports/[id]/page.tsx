@@ -51,6 +51,8 @@ type NoteRow = {
   created_at: string;
   mail_sent_at?: string | null;
   files?: FileRow[];
+  source_label?: string;
+  source_code?: string;
 };
 
 type CustomerMini = {
@@ -99,6 +101,20 @@ export default function ReportDetailPage() {
   const [newNoteFiles, setNewNoteFiles] = useState<File[]>([]);
   const [noteActionLoading, setNoteActionLoading] = useState<"save" | "send" | null>(null);
 
+  function uniqueEmails(values: Array<string | undefined | null>) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of values) {
+      const e = (v || "").trim();
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
+  }
+
   useEffect(() => {
     async function load() {
       try {
@@ -132,7 +148,9 @@ export default function ReportDetailPage() {
         const defaultEmail = r.note_contact_email || c.contact_email || c.email || "";
         setNoteContactName(defaultName);
         setNoteContactEmail(defaultEmail);
-        setRecipientEmails(defaultEmail);
+        setRecipientEmails(
+          uniqueEmails([r.note_contact_email, r.delivery_email, c.contact_email, c.email]).join(", ")
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
@@ -243,7 +261,7 @@ export default function ReportDetailPage() {
         await apiUpload("/api/files/upload/", fd);
       }
       if (sendMail) {
-        await apiFetch(`/api/notes/${created.id}/send_mail/`, {
+        const mailRes = await apiFetch<{ sent_to?: string[] }>(`/api/notes/${created.id}/send_mail/`, {
           method: "POST",
           body: JSON.stringify({
             subject: newNoteSubject.trim() || "Bu rapor hakkında",
@@ -253,6 +271,10 @@ export default function ReportDetailPage() {
             recipients: recipientEmails || null
           })
         });
+        const sentTo = (mailRes.sent_to || []).join(", ");
+        if (sentTo) {
+          setNoteNotice(`Not kaydedildi ve mail gönderildi: ${sentTo}`);
+        }
       }
       const [updatedRep, updatedNotes] = await Promise.all([
         apiFetch<ReportRow>(`/api/reports/${rep.id}/`),
@@ -264,7 +286,7 @@ export default function ReportDetailPage() {
       setNewNoteText("");
       setNewNoteFiles([]);
       setNoteModalOpen(false);
-      setNoteNotice(sendMail ? "Not kaydedildi ve mail gönderildi." : "Not kaydedildi.");
+      if (!sendMail) setNoteNotice("Not kaydedildi.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNoteNotice(`Not işlemi başarısız: ${msg}`);
@@ -439,7 +461,14 @@ export default function ReportDetailPage() {
             value={manualEmails}
             onChange={(e) => setManualEmails(e.target.value)}
           />
-          <Button variant="outline" onClick={() => setNoteModalOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setManualEmails("");
+              setRecipientEmails(uniqueEmails([rep.note_contact_email, rep.delivery_email]).join(", "));
+              setNoteModalOpen(true);
+            }}
+          >
             Not Ekle
           </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
@@ -477,8 +506,13 @@ export default function ReportDetailPage() {
                       onClick={async () => {
                         if (!confirm("Bu not silinsin mi?")) return;
                         await apiFetch(`/api/notes/${n.id}/`, { method: "DELETE" });
-                        const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?report=${id}`);
+                        const [updatedNotes, updatedRep] = await Promise.all([
+                          apiFetch<NoteRow[]>(`/api/notes/?report=${id}`),
+                          apiFetch<ReportRow>(`/api/reports/${id}/`)
+                        ]);
                         setNotes(updatedNotes);
+                        setRep(updatedRep);
+                        setCardNote(updatedRep.card_note || "");
                       }}
                     >
                       Notu Sil

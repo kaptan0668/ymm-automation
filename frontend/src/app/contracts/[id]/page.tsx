@@ -73,6 +73,8 @@ type NoteRow = {
   created_at: string;
   mail_sent_at?: string | null;
   files?: FileRow[];
+  source_label?: string;
+  source_code?: string;
 };
 
 export default function ContractDetailPage() {
@@ -96,6 +98,20 @@ export default function ContractDetailPage() {
   const [noteActionLoading, setNoteActionLoading] = useState<"save" | "send" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function uniqueEmails(values: Array<string | undefined | null>) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of values) {
+      const e = (v || "").trim();
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
+  }
+
   useEffect(() => {
     async function load() {
       try {
@@ -116,7 +132,7 @@ export default function ContractDetailPage() {
         const defaultEmail = c.note_contact_email || cust.contact_email || cust.email || "";
         setNoteContactName(defaultName);
         setNoteContactEmail(defaultEmail);
-        setRecipientEmails(defaultEmail);
+        setRecipientEmails(uniqueEmails([c.note_contact_email, cust.contact_email, cust.email]).join(", "));
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setError(msg);
@@ -147,7 +163,7 @@ export default function ContractDetailPage() {
         await apiUpload("/api/files/upload/", fd);
       }
       if (sendMail) {
-        await apiFetch(`/api/notes/${created.id}/send_mail/`, {
+        const mailRes = await apiFetch<{ sent_to?: string[] }>(`/api/notes/${created.id}/send_mail/`, {
           method: "POST",
           body: JSON.stringify({
             subject: newNoteSubject.trim() || "Bu sözleşme hakkında",
@@ -157,6 +173,10 @@ export default function ContractDetailPage() {
             recipients: recipientEmails || null
           })
         });
+        const sentTo = (mailRes.sent_to || []).join(", ");
+        if (sentTo) {
+          setNoteNotice(`Not kaydedildi ve mail gönderildi: ${sentTo}`);
+        }
       }
       const [updatedContract, updatedNotes] = await Promise.all([
         apiFetch<ContractRow>(`/api/contracts/${contract.id}/`),
@@ -168,7 +188,7 @@ export default function ContractDetailPage() {
       setNewNoteText("");
       setNewNoteFiles([]);
       setNoteModalOpen(false);
-      setNoteNotice(sendMail ? "Not kaydedildi ve mail gönderildi." : "Not kaydedildi.");
+      if (!sendMail) setNoteNotice("Not kaydedildi.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNoteNotice(`Not işlemi başarısız: ${msg}`);
@@ -275,7 +295,14 @@ export default function ContractDetailPage() {
             value={manualEmails}
             onChange={(e) => setManualEmails(e.target.value)}
           />
-          <Button variant="outline" onClick={() => setNoteModalOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setManualEmails("");
+              setRecipientEmails(uniqueEmails([contract.note_contact_email, customer.contact_email, customer.email]).join(", "));
+              setNoteModalOpen(true);
+            }}
+          >
             Not Ekle
           </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
@@ -312,8 +339,13 @@ export default function ContractDetailPage() {
                     onClick={async () => {
                       if (!confirm("Bu not silinsin mi?")) return;
                       await apiFetch(`/api/notes/${n.id}/`, { method: "DELETE" });
-                      const updatedNotes = await apiFetch<NoteRow[]>(`/api/notes/?contract=${id}`);
+                      const [updatedNotes, updatedContract] = await Promise.all([
+                        apiFetch<NoteRow[]>(`/api/notes/?contract=${id}`),
+                        apiFetch<ContractRow>(`/api/contracts/${id}/`)
+                      ]);
                       setNotes(updatedNotes);
+                      setContract(updatedContract);
+                      setCardNote(updatedContract.card_note || "");
                     }}
                   >
                     Notu Sil

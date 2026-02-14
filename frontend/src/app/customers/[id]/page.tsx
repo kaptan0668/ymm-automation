@@ -74,6 +74,8 @@ type NoteRow = {
   created_at: string;
   mail_sent_at?: string | null;
   files?: FileRow[];
+  source_label?: string;
+  source_code?: string;
 };
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
@@ -124,6 +126,20 @@ export default function CustomerCardPage() {
   const [noteContactName, setNoteContactName] = useState("");
   const [noteContactEmail, setNoteContactEmail] = useState("");
 
+  function uniqueEmails(values: Array<string | undefined | null>) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of values) {
+      const e = (v || "").trim();
+      if (!e) continue;
+      const key = e.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
+  }
+
   const [showDocs, setShowDocs] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showContracts, setShowContracts] = useState(false);
@@ -165,7 +181,7 @@ export default function CustomerCardPage() {
         setNoteContactName(c.contact_person || "");
         const defaultEmail = c.contact_email || c.email || "";
         setNoteContactEmail(defaultEmail);
-        setRecipientEmails(defaultEmail);
+        setRecipientEmails(uniqueEmails([c.contact_email, c.email]).join(", "));
         setCardNote(c.card_note || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -251,7 +267,7 @@ export default function CustomerCardPage() {
         await apiUpload("/api/files/upload/", fd);
       }
       if (sendMail) {
-        await apiFetch(`/api/notes/${created.id}/send_mail/`, {
+        const mailRes = await apiFetch<{ sent_to?: string[] }>(`/api/notes/${created.id}/send_mail/`, {
           method: "POST",
           body: JSON.stringify({
             subject: newNoteSubject.trim() || "Bu müşteri hakkında",
@@ -261,6 +277,10 @@ export default function CustomerCardPage() {
             recipients: recipientEmails || null
           })
         });
+        const sentTo = (mailRes.sent_to || []).join(", ");
+        if (sentTo) {
+          setNoteNotice(`Not kaydedildi ve mail gönderildi: ${sentTo}`);
+        }
       }
       const [updatedCustomer, updatedNotes] = await Promise.all([
         apiFetch<Customer>(`/api/customers/${customer.id}/`),
@@ -272,7 +292,7 @@ export default function CustomerCardPage() {
       setNewNoteText("");
       setNewNoteFiles([]);
       setNoteModalOpen(false);
-      setNoteNotice(sendMail ? "Not kaydedildi ve mail gönderildi." : "Not kaydedildi.");
+      if (!sendMail) setNoteNotice("Not kaydedildi.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setNoteNotice(`Not işlemi başarısız: ${msg}`);
@@ -346,7 +366,14 @@ export default function CustomerCardPage() {
           <Input placeholder="İlgili kişi" value={noteContactName} onChange={(e) => setNoteContactName(e.target.value)} />
           <Input placeholder="İlgili e-posta" value={noteContactEmail} onChange={(e) => setNoteContactEmail(e.target.value)} />
           <Input placeholder="Ek e-posta (virgülle)" value={manualEmails} onChange={(e) => setManualEmails(e.target.value)} />
-          <Button variant="outline" onClick={() => setNoteModalOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setManualEmails("");
+              setRecipientEmails(uniqueEmails([customer.contact_email, customer.email]).join(", "));
+              setNoteModalOpen(true);
+            }}
+          >
             Not Ekle
           </Button>
           {noteNotice ? <div className="text-sm text-ink/70">{noteNotice}</div> : null}
@@ -360,6 +387,11 @@ export default function CustomerCardPage() {
                   Kayıt: {new Date(n.created_at).toLocaleString("tr-TR")}
                   {n.mail_sent_at ? ` • Mail: ${new Date(n.mail_sent_at).toLocaleString("tr-TR")}` : ""}
                 </div>
+                {n.source_label || n.source_code ? (
+                  <div className="mt-1 text-xs text-ink/60">
+                    {n.source_label || "Kayıt"}: {n.source_code || "-"}
+                  </div>
+                ) : null}
                 {n.subject ? <div className="mt-1 font-medium text-ink/80">Konu: {n.subject}</div> : null}
                 <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.text}</div>
                 {n.files && n.files.length > 0 ? (

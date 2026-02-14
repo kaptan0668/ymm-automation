@@ -140,7 +140,8 @@ def _send_note_email(
     recipient_name = (contact_name or "").strip() or "İlgili Kişi"
     clean_subject = (note_subject or "").strip() or f"Bu {entity_label.lower()} hakkında"
 
-    subject = f"[YMM Otomasyon] {entity_code} - {clean_subject}"
+    brand = (_get_settings().mail_brand_name or "YMM Kadir Hafızoğlu").strip()
+    subject = f"[{brand}] {entity_code} - {clean_subject}"
     body = (
         f"Sayın {recipient_name},\n\n"
         f"İlgili kayıt: {entity_label} {entity_code}\n"
@@ -246,6 +247,42 @@ def _resolve_note_target(note: Note, payload: dict):
         contact_name = contact_name or note.customer.contact_person or ""
 
     return entity_label, entity_code, to_emails, contact_name
+
+
+def _sync_latest_card_note(note: Note):
+    latest_text = None
+    if note.document_id:
+        latest_text = (
+            Note.objects.filter(document_id=note.document_id, is_archived=False)
+            .order_by("-created_at")
+            .values_list("text", flat=True)
+            .first()
+        )
+        Document.objects.filter(id=note.document_id).update(card_note=latest_text or None)
+    elif note.report_id:
+        latest_text = (
+            Note.objects.filter(report_id=note.report_id, is_archived=False)
+            .order_by("-created_at")
+            .values_list("text", flat=True)
+            .first()
+        )
+        Report.objects.filter(id=note.report_id).update(card_note=latest_text or None)
+    elif note.contract_id:
+        latest_text = (
+            Note.objects.filter(contract_id=note.contract_id, is_archived=False)
+            .order_by("-created_at")
+            .values_list("text", flat=True)
+            .first()
+        )
+        Contract.objects.filter(id=note.contract_id).update(card_note=latest_text or None)
+    elif note.customer_id:
+        latest_text = (
+            Note.objects.filter(customer_id=note.customer_id, is_archived=False)
+            .order_by("-created_at")
+            .values_list("text", flat=True)
+            .first()
+        )
+        Customer.objects.filter(id=note.customer_id).update(card_note=latest_text or None)
 
 
 def _smtp_runtime_config():
@@ -731,7 +768,7 @@ class NoteViewSet(AuditViewSet):
                 | Q(document__customer_id=customer)
                 | Q(report__customer_id=customer)
                 | Q(contract__customer_id=customer)
-            )
+            ).distinct()
         if document:
             qs = qs.filter(document_id=document)
         if report:
@@ -757,6 +794,11 @@ class NoteViewSet(AuditViewSet):
             Customer.objects.filter(id=note.customer_id).update(card_note=note.text)
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        note_ref = instance
+        super().perform_destroy(instance)
+        _sync_latest_card_note(note_ref)
 
     @action(detail=True, methods=["post"])
     def send_mail(self, request, pk=None):
@@ -995,7 +1037,7 @@ class SettingsViewSet(viewsets.ViewSet):
         try:
             smtp = _smtp_runtime_config()
             msg = EmailMessage(
-                subject="[YMM Otomasyon] SMTP Test",
+                subject=f"[{(_get_settings().mail_brand_name or 'YMM Kadir Hafızoğlu').strip()}] SMTP Test",
                 body="Bu bir test e-postasıdır. SMTP ayarları başarıyla çalışıyor.",
                 from_email=smtp["from_email"],
                 to=recipients,

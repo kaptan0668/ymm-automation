@@ -101,6 +101,7 @@ export async function getSettings() {
     id: number;
     working_year: number;
     reference_year: number;
+    mail_brand_name?: string | null;
     smtp_host?: string | null;
     smtp_port?: number | null;
     smtp_user?: string | null;
@@ -117,6 +118,7 @@ export async function updateSettings(data: {
   smtp_host?: string | null;
   smtp_port?: number;
   smtp_user?: string | null;
+  mail_brand_name?: string | null;
   smtp_password?: string;
   smtp_use_tls?: boolean;
   smtp_use_ssl?: boolean;
@@ -126,6 +128,7 @@ export async function updateSettings(data: {
     id: number;
     working_year: number;
     reference_year: number;
+    mail_brand_name?: string | null;
     smtp_host?: string | null;
     smtp_port?: number | null;
     smtp_user?: string | null;

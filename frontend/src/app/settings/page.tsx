@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const [smtpUseSsl, setSmtpUseSsl] = useState(false);
   const [smtpFromEmail, setSmtpFromEmail] = useState("");
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [mailBrandName, setMailBrandName] = useState("YMM Kadir Hafızoğlu");
   const [testEmail, setTestEmail] = useState("");
   const [testingMail, setTestingMail] = useState(false);
 
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         setSmtpHost(settings.smtp_host || "");
         setSmtpPort(String(settings.smtp_port || 587));
         setSmtpUser(settings.smtp_user || "");
+        setMailBrandName(settings.mail_brand_name || "YMM Kadir Hafızoğlu");
         setSmtpUseTls(Boolean(settings.smtp_use_tls));
         setSmtpUseSsl(Boolean(settings.smtp_use_ssl));
         setSmtpFromEmail(settings.smtp_from_email || "");
@@ -107,6 +109,7 @@ export default function SettingsPage() {
         smtp_host: string | null;
         smtp_port: number;
         smtp_user: string | null;
+        mail_brand_name: string | null;
         smtp_use_tls: boolean;
         smtp_use_ssl: boolean;
         smtp_from_email: string | null;
@@ -116,6 +119,7 @@ export default function SettingsPage() {
         smtp_host: smtpHost.trim() || null,
         smtp_port: Number(smtpPort || 587),
         smtp_user: smtpUser.trim() || null,
+        mail_brand_name: mailBrandName.trim() || null,
         smtp_use_tls: smtpUseTls,
         smtp_use_ssl: smtpUseSsl,
         smtp_from_email: smtpFromEmail.trim() || null,
@@ -275,6 +279,7 @@ export default function SettingsPage() {
             <Input placeholder="SMTP Host" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
             <Input placeholder="SMTP Port" value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} />
             <Input placeholder="SMTP Kullanıcı" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
+            <Input placeholder="Mail başlık adı" value={mailBrandName} onChange={(e) => setMailBrandName(e.target.value)} />
             <Input type="password" placeholder="SMTP Şifre (değiştirmek için doldurun)" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} />
             <Input placeholder="Gönderen E-posta" value={smtpFromEmail} onChange={(e) => setSmtpFromEmail(e.target.value)} />
             <Input placeholder="Test alıcı e-posta" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} />

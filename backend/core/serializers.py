@@ -126,6 +126,8 @@ class FileSerializer(serializers.ModelSerializer):
 
 class NoteSerializer(serializers.ModelSerializer):
     files = FileSerializer(source="note_files", many=True, read_only=True)
+    source_label = serializers.SerializerMethodField()
+    source_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Note
@@ -139,6 +141,8 @@ class NoteSerializer(serializers.ModelSerializer):
             "report",
             "contract",
             "files",
+            "source_label",
+            "source_code",
             "created_by",
             "updated_by",
             "created_at",
@@ -157,6 +161,26 @@ class NoteSerializer(serializers.ModelSerializer):
         if len(linked) != 1:
             raise serializers.ValidationError("Not yalnızca tek bir karta bağlı olmalıdır.")
         return attrs
+
+    def get_source_label(self, obj):
+        if obj.document_id:
+            return "Evrak"
+        if obj.report_id:
+            return "Rapor"
+        if obj.contract_id:
+            return "Sözleşme"
+        return "Müşteri"
+
+    def get_source_code(self, obj):
+        if obj.document_id and obj.document:
+            return obj.document.doc_no
+        if obj.report_id and obj.report:
+            return obj.report.report_no
+        if obj.contract_id and obj.contract:
+            return obj.contract.contract_no or f"Sözleşme #{obj.contract_id}"
+        if obj.customer_id and obj.customer:
+            return obj.customer.name
+        return "-"
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -444,6 +468,7 @@ class AppSettingSerializer(serializers.ModelSerializer):
             "id",
             "working_year",
             "reference_year",
+            "mail_brand_name",
             "smtp_host",
             "smtp_port",
             "smtp_user",

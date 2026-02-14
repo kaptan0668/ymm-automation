@@ -144,6 +144,11 @@ class ReportCounterTypeCum(models.Model):
 class AppSetting(models.Model):
     working_year = models.IntegerField(default=default_year, verbose_name="Çalışma yılı")
     reference_year = models.IntegerField(default=default_year, verbose_name="Referans yılı")
+    mail_brand_name = models.CharField(
+        max_length=255,
+        default="YMM Kadir Hafızoğlu",
+        verbose_name="Mail marka adı",
+    )
     smtp_host = models.CharField(max_length=255, null=True, blank=True, verbose_name="SMTP host")
     smtp_port = models.IntegerField(default=587, verbose_name="SMTP port")
     smtp_user = models.CharField(max_length=255, null=True, blank=True, verbose_name="SMTP kullanıcı")
