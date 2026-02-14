@@ -285,6 +285,13 @@ export default function ListsPage() {
     }
   }
 
+  const pageTitle = useMemo(() => {
+    if (tab === "customers") return "Mukellef Listesi";
+    if (tab === "documents") return "Evrak Listesi";
+    if (tab === "reports") return "Rapor Listesi";
+    return "Sozlesme Listesi";
+  }, [tab]);
+
   return (
     <div className="space-y-5 report-print">
       <div>
@@ -425,9 +432,3 @@ export default function ListsPage() {
     </div>
   );
 }
-  const pageTitle = useMemo(() => {
-    if (tab === "customers") return "Mukellef Listesi";
-    if (tab === "documents") return "Evrak Listesi";
-    if (tab === "reports") return "Rapor Listesi";
-    return "Sozlesme Listesi";
-  }, [tab]);
