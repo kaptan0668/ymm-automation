@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { apiFetch, apiUpload, me } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ type DocumentRow = {
   received_date?: string;
   subject?: string;
   status?: string;
+  card_note?: string;
   files?: FileRow[];
 };
 
@@ -47,6 +48,7 @@ type ReportRow = {
   received_date?: string;
   subject?: string;
   status?: string;
+  card_note?: string;
   files?: FileRow[];
 };
 
@@ -56,6 +58,7 @@ type ContractRow = {
   contract_no?: string;
   contract_date?: string;
   contract_type?: string;
+  card_note?: string;
   period_start_month?: number;
   period_start_year?: number;
   period_end_month?: number;
@@ -260,6 +263,37 @@ export default function CustomerCardPage() {
   const reportCount = reports.length;
   const fileCount = files.length;
   const contractCount = contracts.length;
+  const relatedNotes = useMemo(() => {
+    const items: Array<{ source: string; title: string; note: string }> = [];
+    for (const c of contracts) {
+      if ((c.card_note || "").trim()) {
+        items.push({
+          source: "Sözleşme",
+          title: c.contract_no || `Sözleşme #${c.id}`,
+          note: (c.card_note || "").trim()
+        });
+      }
+    }
+    for (const d of docs) {
+      if ((d.card_note || "").trim()) {
+        items.push({
+          source: "Evrak",
+          title: d.doc_no,
+          note: (d.card_note || "").trim()
+        });
+      }
+    }
+    for (const r of reports) {
+      if ((r.card_note || "").trim()) {
+        items.push({
+          source: "Rapor",
+          title: r.report_no,
+          note: (r.card_note || "").trim()
+        });
+      }
+    }
+    return items;
+  }, [contracts, docs, reports]);
 
   function formatPeriod(item: ContractRow) {
     if (item.period_start_month && item.period_start_year && item.period_end_month && item.period_end_year) {
@@ -309,6 +343,19 @@ export default function CustomerCardPage() {
 
       <div className={`rounded-2xl border p-6 ${cardNote?.trim() || noteFiles.length > 0 ? "border-amber-300 bg-amber-50/60" : "border-ink/10 bg-white/80"}`}>
         <div className="text-sm font-semibold text-ink">Notlar</div>
+        {relatedNotes.length > 0 ? (
+          <div className="mt-3 space-y-2 rounded-md border border-ink/15 bg-white p-3">
+            <div className="text-xs font-medium text-ink/70">Kartlardan otomatik gelen notlar</div>
+            {relatedNotes.map((n, i) => (
+              <div key={`${n.source}-${n.title}-${i}`} className="rounded-md border border-ink/10 bg-haze/60 p-2 text-sm">
+                <div className="text-xs text-ink/60">
+                  {n.source}: {n.title}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap text-ink/80">{n.note}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <textarea
           className="mt-3 h-28 w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-sm"
           placeholder="Müşteri kartı notu"
