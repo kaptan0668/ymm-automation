@@ -84,7 +84,7 @@ export async function login(username: string, password: string) {
 }
 
 export async function me() {
-  return apiFetch<{ authenticated: boolean; username?: string; is_staff?: boolean; is_superuser?: boolean }>(
+  return apiFetch<{ authenticated: boolean; username?: string; email?: string; is_staff?: boolean; is_superuser?: boolean }>(
     "/api/auth/me/"
   );
 }
@@ -97,13 +97,52 @@ export async function changePassword(old_password: string, new_password: string)
 }
 
 export async function getSettings() {
-  return apiFetch<{ id: number; working_year: number; reference_year: number }>("/api/settings/");
+  return apiFetch<{
+    id: number;
+    working_year: number;
+    reference_year: number;
+    smtp_host?: string | null;
+    smtp_port?: number | null;
+    smtp_user?: string | null;
+    smtp_use_tls?: boolean;
+    smtp_use_ssl?: boolean;
+    smtp_from_email?: string | null;
+    smtp_configured?: boolean;
+  }>("/api/settings/");
 }
 
-export async function updateSettings(data: { working_year?: number; reference_year?: number }) {
-  return apiFetch<{ id: number; working_year: number; reference_year: number }>("/api/settings/", {
+export async function updateSettings(data: {
+  working_year?: number;
+  reference_year?: number;
+  smtp_host?: string | null;
+  smtp_port?: number;
+  smtp_user?: string | null;
+  smtp_password?: string;
+  smtp_use_tls?: boolean;
+  smtp_use_ssl?: boolean;
+  smtp_from_email?: string | null;
+}) {
+  return apiFetch<{
+    id: number;
+    working_year: number;
+    reference_year: number;
+    smtp_host?: string | null;
+    smtp_port?: number | null;
+    smtp_user?: string | null;
+    smtp_use_tls?: boolean;
+    smtp_use_ssl?: boolean;
+    smtp_from_email?: string | null;
+    smtp_configured?: boolean;
+  }>("/api/settings/", {
     method: "POST",
     body: JSON.stringify(data)
+  });
+}
+
+export async function sendTestMail(to_email: string) {
+  return apiFetch<{ status: string; sent_to: string[] }>("/api/settings/test_mail/", {
+    method: "POST",
+    body: JSON.stringify({ to_email })
   });
 }
 

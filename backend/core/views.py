@@ -1,4 +1,5 @@
 ﻿import os
+import re
 import uuid
 import boto3
 from botocore.client import Config
@@ -10,6 +11,10 @@ from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.exceptions import PermissionDenied
 from django.core.management import call_command
+from django.core.mail import EmailMessage
+from django.core.mail import get_connection
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import FileResponse
 from django.utils import timezone
 from .models import (
@@ -71,6 +76,120 @@ def _ensure_bucket(client, bucket):
         client.head_bucket(Bucket=bucket)
     except Exception:
         client.create_bucket(Bucket=bucket)
+
+
+def _extract_key(url: str, bucket: str) -> str | None:
+    if not url:
+        return None
+    parts = url.split("/", 3)
+    if len(parts) < 4:
+        return None
+    path = parts[3]
+    prefix = f"{bucket}/"
+    if path.startswith(prefix):
+        return path[len(prefix):]
+    return None
+
+
+def _parse_emails(value):
+    if value is None:
+        return []
+    stack = value if isinstance(value, list) else [value]
+    raw_items = []
+    for item in stack:
+        raw_items.extend(re.split(r"[,\n;]+", str(item)))
+    cleaned = []
+    seen = set()
+    for raw in raw_items:
+        email = (raw or "").strip()
+        if not email:
+            continue
+        try:
+            validate_email(email)
+        except ValidationError:
+            continue
+        key = email.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(email)
+    return cleaned
+
+
+def _send_note_email(*, request, entity_label: str, entity_code: str, note_text: str, to_emails, files_qs, contact_name: str | None):
+    if not note_text.strip():
+        raise ValidationError("Gönderilecek not boş olamaz.")
+    recipients = _parse_emails(to_emails)
+    if not recipients:
+        raise ValidationError("Geçerli bir alıcı e-posta bulunamadı.")
+
+    actor = _actor(request)
+    actor_name = ""
+    if actor:
+        actor_name = actor.get_full_name().strip() or actor.username
+    if not actor_name:
+        actor_name = "YMM Otomasyon"
+
+    timestamp = timezone.localtime().strftime("%d.%m.%Y %H:%M")
+    recipient_name = (contact_name or "").strip() or "İlgili Kişi"
+
+    subject = f"[YMM Otomasyon] {entity_label} Notu - {entity_code}"
+    body = (
+        f"Sayın {recipient_name},\n\n"
+        f"{entity_label} için bir not paylaşılmıştır.\n\n"
+        f"{note_text.strip()}\n\n"
+        f"Bilginize.\n\n"
+        f"{actor_name}\n"
+        f"Tarih: {timestamp}"
+    )
+    smtp = _smtp_runtime_config()
+    message = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=smtp["from_email"],
+        to=recipients,
+        connection=smtp["connection"],
+    )
+
+    bucket = os.environ.get("MINIO_BUCKET", "ymm-files")
+    s3 = _s3_client()
+    attached_count = 0
+    for f in files_qs:
+        key = _extract_key(f.url, bucket)
+        if not key:
+            continue
+        try:
+            data = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+        except Exception:
+            continue
+        message.attach(f.filename, data, f.content_type or "application/octet-stream")
+        attached_count += 1
+
+    message.send(fail_silently=False)
+    return {"sent_to": recipients, "attachment_count": attached_count}
+
+
+def _smtp_runtime_config():
+    cfg = _get_settings()
+    has_db_smtp = bool(cfg.smtp_host and cfg.smtp_user and cfg.smtp_from_email)
+    if has_db_smtp:
+        connection = get_connection(
+            backend="django.core.mail.backends.smtp.EmailBackend",
+            host=cfg.smtp_host,
+            port=cfg.smtp_port or 587,
+            username=cfg.smtp_user,
+            password=cfg.smtp_password or "",
+            use_tls=bool(cfg.smtp_use_tls),
+            use_ssl=bool(cfg.smtp_use_ssl),
+        )
+        return {
+            "connection": connection,
+            "from_email": cfg.smtp_from_email,
+        }
+    return {
+        "connection": get_connection(),
+        "from_email": os.environ.get("DEFAULT_FROM_EMAIL", "ymm-otomasyon@localhost"),
+    }
 
 
 def _sync_contract_status(contract_id: int | None):
@@ -147,6 +266,27 @@ class CustomerViewSet(AuditViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
 
+    @action(detail=True, methods=["post"])
+    def send_note_mail(self, request, pk=None):
+        customer = self.get_object()
+        extra_emails = request.data.get("extra_emails")
+        files_qs = File.objects.filter(customer_id=customer.id, note_scope=True, document__isnull=True, report__isnull=True, contract__isnull=True)
+
+        try:
+            result = _send_note_email(
+                request=request,
+                entity_label="Müşteri",
+                entity_code=customer.name,
+                note_text=(customer.card_note or ""),
+                to_emails=[customer.contact_email, customer.email, extra_emails],
+                files_qs=files_qs,
+                contact_name=customer.contact_person,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        return Response({"status": "ok", **result})
+
 
 class DocumentViewSet(AuditViewSet):
     queryset = Document.objects.all()
@@ -221,6 +361,41 @@ class DocumentViewSet(AuditViewSet):
         if counter.last_serial >= deleted_serial:
             counter.last_serial = prev_serial
             counter.save()
+
+    @action(detail=True, methods=["post"])
+    def send_note_mail(self, request, pk=None):
+        doc = self.get_object()
+        extra_emails = request.data.get("extra_emails")
+        note_contact_name = request.data.get("note_contact_name")
+        note_contact_email = request.data.get("note_contact_email")
+        update_fields = []
+        if note_contact_name is not None:
+            doc.note_contact_name = (note_contact_name or "").strip() or None
+            update_fields.append("note_contact_name")
+        if note_contact_email is not None:
+            doc.note_contact_email = (note_contact_email or "").strip() or None
+            update_fields.append("note_contact_email")
+        if update_fields:
+            update_fields.append("updated_at")
+            doc.save(update_fields=update_fields)
+
+        files_qs = File.objects.filter(document_id=doc.id, note_scope=True)
+        contact_name = doc.note_contact_name or getattr(doc.customer, "contact_person", "")
+
+        try:
+            result = _send_note_email(
+                request=request,
+                entity_label="Evrak",
+                entity_code=doc.doc_no,
+                note_text=(doc.card_note or ""),
+                to_emails=[doc.note_contact_email, doc.delivery_email, getattr(doc.customer, "contact_email", None), getattr(doc.customer, "email", None), extra_emails],
+                files_qs=files_qs,
+                contact_name=contact_name,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        return Response({"status": "ok", **result})
 
 
 class ReportViewSet(AuditViewSet):
@@ -317,6 +492,41 @@ class ReportViewSet(AuditViewSet):
             global_counter.last_serial = prev_global
             global_counter.save()
         _sync_contract_status(contract_id)
+
+    @action(detail=True, methods=["post"])
+    def send_note_mail(self, request, pk=None):
+        rep = self.get_object()
+        extra_emails = request.data.get("extra_emails")
+        note_contact_name = request.data.get("note_contact_name")
+        note_contact_email = request.data.get("note_contact_email")
+        update_fields = []
+        if note_contact_name is not None:
+            rep.note_contact_name = (note_contact_name or "").strip() or None
+            update_fields.append("note_contact_name")
+        if note_contact_email is not None:
+            rep.note_contact_email = (note_contact_email or "").strip() or None
+            update_fields.append("note_contact_email")
+        if update_fields:
+            update_fields.append("updated_at")
+            rep.save(update_fields=update_fields)
+
+        files_qs = File.objects.filter(report_id=rep.id, note_scope=True)
+        contact_name = rep.note_contact_name or getattr(rep.customer, "contact_person", "")
+
+        try:
+            result = _send_note_email(
+                request=request,
+                entity_label="Rapor",
+                entity_code=rep.report_no,
+                note_text=(rep.card_note or ""),
+                to_emails=[rep.note_contact_email, rep.delivery_email, getattr(rep.customer, "contact_email", None), getattr(rep.customer, "email", None), extra_emails],
+                files_qs=files_qs,
+                contact_name=contact_name,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        return Response({"status": "ok", **result})
 
 
 class FileViewSet(AuditViewSet):
@@ -444,6 +654,41 @@ class ContractViewSet(AuditViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         return qs
+
+    @action(detail=True, methods=["post"])
+    def send_note_mail(self, request, pk=None):
+        contract = self.get_object()
+        extra_emails = request.data.get("extra_emails")
+        note_contact_name = request.data.get("note_contact_name")
+        note_contact_email = request.data.get("note_contact_email")
+        update_fields = []
+        if note_contact_name is not None:
+            contract.note_contact_name = (note_contact_name or "").strip() or None
+            update_fields.append("note_contact_name")
+        if note_contact_email is not None:
+            contract.note_contact_email = (note_contact_email or "").strip() or None
+            update_fields.append("note_contact_email")
+        if update_fields:
+            update_fields.append("updated_at")
+            contract.save(update_fields=update_fields)
+
+        files_qs = File.objects.filter(contract_id=contract.id, note_scope=True)
+        contact_name = contract.note_contact_name or getattr(contract.customer, "contact_person", "")
+
+        try:
+            result = _send_note_email(
+                request=request,
+                entity_label="Sözleşme",
+                entity_code=contract.contract_no or f"Sözleşme #{contract.id}",
+                note_text=(contract.card_note or ""),
+                to_emails=[contract.note_contact_email, getattr(contract.customer, "contact_email", None), getattr(contract.customer, "email", None), extra_emails],
+                files_qs=files_qs,
+                contact_name=contact_name,
+            )
+        except ValidationError as exc:
+            return Response({"error": str(exc)}, status=400)
+
+        return Response({"status": "ok", **result})
 
     @action(detail=False, methods=["post"])
     def upload(self, request):
@@ -577,6 +822,28 @@ class SettingsViewSet(viewsets.ViewSet):
         serializer.save()
         return Response(serializer.data)
 
+    @action(detail=False, methods=["post"])
+    def test_mail(self, request):
+        user = _actor(request)
+        if not user or not user.is_staff:
+            raise PermissionDenied("Sadece admin test mail gönderebilir.")
+        to_email = (request.data.get("to_email") or "").strip() or getattr(user, "email", "")
+        if not to_email:
+            return Response({"error": "Test alıcı e-posta zorunludur."}, status=400)
+        recipients = _parse_emails(to_email)
+        if not recipients:
+            return Response({"error": "Geçerli bir e-posta girin."}, status=400)
+        smtp = _smtp_runtime_config()
+        msg = EmailMessage(
+            subject="[YMM Otomasyon] SMTP Test",
+            body="Bu bir test e-postasıdır. SMTP ayarları başarıyla çalışıyor.",
+            from_email=smtp["from_email"],
+            to=recipients,
+            connection=smtp["connection"],
+        )
+        msg.send(fail_silently=False)
+        return Response({"status": "ok", "sent_to": recipients})
+
 
 class CounterAdminViewSet(viewsets.ViewSet):
     def create(self, request):
@@ -663,5 +930,11 @@ def backup(request):
             stdout=f,
         )
     return FileResponse(open(filename, "rb"), as_attachment=True, filename=f"backup_{ts}.json")
+
+
+
+
+
+
 
 

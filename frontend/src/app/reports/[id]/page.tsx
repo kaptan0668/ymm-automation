@@ -19,6 +19,8 @@ type ReportRow = {
   subject?: string;
   description?: string;
   card_note?: string;
+  note_contact_name?: string;
+  note_contact_email?: string;
   delivery_method?: string;
   period_start_month?: number;
   period_start_year?: number;
@@ -73,6 +75,10 @@ export default function ReportDetailPage() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
   const [noteFile, setNoteFile] = useState<File | null>(null);
+  const [noteContactName, setNoteContactName] = useState("");
+  const [noteContactEmail, setNoteContactEmail] = useState("");
+  const [manualEmails, setManualEmails] = useState("");
+  const [mailSending, setMailSending] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -100,6 +106,8 @@ export default function ReportDetailPage() {
         setDeliveryEbysDate(r.delivery_ebys_date || "");
         setDeliveryOtherDesc(r.delivery_other_desc || "");
         setCardNote(r.card_note || "");
+        setNoteContactName(r.note_contact_name || "");
+        setNoteContactEmail(r.note_contact_email || "");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
@@ -132,6 +140,8 @@ export default function ReportDetailPage() {
           delivery_elden_name: deliveryEldenName || null,
           delivery_elden_date: deliveryEldenDate || null,
           delivery_email: deliveryEmail || null,
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null,
           delivery_ebys_id: deliveryEbysId || null,
           delivery_ebys_date: deliveryEbysDate || null,
           delivery_other_desc: deliveryOtherDesc || null
@@ -216,6 +226,28 @@ export default function ReportDetailPage() {
     setNoteFile(null);
     const updatedNoteFiles = await apiFetch<FileRow[]>(`/api/files/?report=${rep.id}&note_scope=1`);
     setNoteFiles(updatedNoteFiles);
+  }
+
+  async function handleSendNoteMail() {
+    if (!rep) return;
+    setMailSending(true);
+    setNoteNotice(null);
+    try {
+      await apiFetch(`/api/reports/${rep.id}/send_note_mail/`, {
+        method: "POST",
+        body: JSON.stringify({
+          note_contact_name: noteContactName || null,
+          note_contact_email: noteContactEmail || null,
+          extra_emails: manualEmails || null
+        })
+      });
+      setNoteNotice("Not e-postası gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Mail gönderilemedi: ${msg}`);
+    } finally {
+      setMailSending(false);
+    }
   }
 
   async function handleDeleteNoteFile(fileId: number) {
@@ -376,8 +408,26 @@ export default function ReportDetailPage() {
           onChange={(e) => setCardNote(e.target.value)}
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="İlgili kişi"
+            value={noteContactName}
+            onChange={(e) => setNoteContactName(e.target.value)}
+          />
+          <Input
+            placeholder="İlgili e-posta"
+            value={noteContactEmail}
+            onChange={(e) => setNoteContactEmail(e.target.value)}
+          />
+          <Input
+            placeholder="Ek e-posta (virgülle)"
+            value={manualEmails}
+            onChange={(e) => setManualEmails(e.target.value)}
+          />
           <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
             {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
+            {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
           </Button>
           <input
             type="file"

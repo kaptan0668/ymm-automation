@@ -371,9 +371,35 @@ class ContractSerializer(serializers.ModelSerializer):
 
 
 class AppSettingSerializer(serializers.ModelSerializer):
+    smtp_configured = serializers.SerializerMethodField(read_only=True)
+
+    def get_smtp_configured(self, obj):
+        return bool(obj.smtp_host and obj.smtp_user and obj.smtp_from_email)
+
+    def update(self, instance, validated_data):
+        # Boş parola gönderimi mevcut parolayı ezmesin.
+        if "smtp_password" in validated_data and not validated_data.get("smtp_password"):
+            validated_data.pop("smtp_password", None)
+        return super().update(instance, validated_data)
+
     class Meta:
         model = AppSetting
-        fields = "__all__"
+        fields = (
+            "id",
+            "working_year",
+            "reference_year",
+            "smtp_host",
+            "smtp_port",
+            "smtp_user",
+            "smtp_password",
+            "smtp_use_tls",
+            "smtp_use_ssl",
+            "smtp_from_email",
+            "smtp_configured",
+        )
+        extra_kwargs = {
+            "smtp_password": {"write_only": True, "required": False},
+        }
 
 
 class YearLockSerializer(serializers.ModelSerializer):

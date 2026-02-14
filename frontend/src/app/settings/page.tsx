@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { changePassword, resolveAdminBase, getSettings, updateSettings, updateCounter, me, resolveApiBase, getYearLocks, setYearLock } from "@/lib/api";
+import { changePassword, resolveAdminBase, getSettings, updateSettings, updateCounter, me, resolveApiBase, getYearLocks, setYearLock, sendTestMail } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { clearTokens } from "@/lib/auth";
 
@@ -27,6 +27,16 @@ export default function SettingsPage() {
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
   const [yearLocks, setYearLocks] = useState<Array<{ year: number; is_locked: boolean }>>([]);
   const [lockYear, setLockYear] = useState(String(new Date().getFullYear()));
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpUseTls, setSmtpUseTls] = useState(true);
+  const [smtpUseSsl, setSmtpUseSsl] = useState(false);
+  const [smtpFromEmail, setSmtpFromEmail] = useState("");
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testingMail, setTestingMail] = useState(false);
 
   const years = useMemo(() => {
     const now = new Date().getFullYear();
@@ -42,8 +52,16 @@ export default function SettingsPage() {
       try {
         const [settings, meInfo, locks] = await Promise.all([getSettings(), me(), getYearLocks().catch(() => [])]);
         setWorkingYear(settings.working_year);
+        setSmtpHost(settings.smtp_host || "");
+        setSmtpPort(String(settings.smtp_port || 587));
+        setSmtpUser(settings.smtp_user || "");
+        setSmtpUseTls(Boolean(settings.smtp_use_tls));
+        setSmtpUseSsl(Boolean(settings.smtp_use_ssl));
+        setSmtpFromEmail(settings.smtp_from_email || "");
+        setSmtpConfigured(Boolean(settings.smtp_configured));
         setIsStaff(Boolean(meInfo?.is_staff));
         setIsSuperuser(Boolean(meInfo?.is_superuser));
+        setTestEmail(meInfo?.email || "");
         setYearLocks(locks.map((l) => ({ year: l.year, is_locked: l.is_locked })));
       } catch {
         // ignore
@@ -84,15 +102,53 @@ export default function SettingsPage() {
     if (!isStaff || workingYear === null) return;
     try {
       setSavingSettings(true);
-      await updateSettings({ working_year: workingYear });
+      const payload: {
+        working_year: number;
+        smtp_host: string | null;
+        smtp_port: number;
+        smtp_user: string | null;
+        smtp_use_tls: boolean;
+        smtp_use_ssl: boolean;
+        smtp_from_email: string | null;
+        smtp_password?: string;
+      } = {
+        working_year: workingYear,
+        smtp_host: smtpHost.trim() || null,
+        smtp_port: Number(smtpPort || 587),
+        smtp_user: smtpUser.trim() || null,
+        smtp_use_tls: smtpUseTls,
+        smtp_use_ssl: smtpUseSsl,
+        smtp_from_email: smtpFromEmail.trim() || null,
+      };
+      if (smtpPassword.trim()) {
+        payload.smtp_password = smtpPassword.trim();
+      }
+      const updated = await updateSettings(payload);
       localStorage.setItem("working_year", String(workingYear));
       window.dispatchEvent(new Event("working-year-changed"));
+      setSmtpConfigured(Boolean(updated.smtp_configured));
+      setSmtpPassword("");
       setSettingsNotice(`Çalışma yılı kaydedildi: ${workingYear}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setSettingsNotice(`Kaydedilemedi: ${msg}`);
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  async function handleTestMail() {
+    setSettingsNotice(null);
+    if (!isStaff) return;
+    try {
+      setTestingMail(true);
+      await sendTestMail(testEmail);
+      setSettingsNotice("Test e-postası gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setSettingsNotice(`Test mail gönderilemedi: ${msg}`);
+    } finally {
+      setTestingMail(false);
     }
   }
 
@@ -206,6 +262,41 @@ export default function SettingsPage() {
             {savingSettings ? "Kaydediliyor..." : "Kaydet"}
           </Button>
           {settingsNotice ? <div className="text-sm text-ink/70">{settingsNotice}</div> : null}
+        </div>
+      ) : null}
+
+      {isStaff ? (
+        <div className="rounded-2xl border border-ink/10 bg-white/80 p-6 space-y-3">
+          <div className="text-sm text-ink/60">SMTP Ayarları (Sadece Admin)</div>
+          <div className="text-xs text-ink/50">
+            Durum: {smtpConfigured ? "Yapılandırıldı" : "Eksik"}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input placeholder="SMTP Host" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
+            <Input placeholder="SMTP Port" value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} />
+            <Input placeholder="SMTP Kullanıcı" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} />
+            <Input type="password" placeholder="SMTP Şifre (değiştirmek için doldurun)" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} />
+            <Input placeholder="Gönderen E-posta" value={smtpFromEmail} onChange={(e) => setSmtpFromEmail(e.target.value)} />
+            <Input placeholder="Test alıcı e-posta" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={smtpUseTls} onChange={(e) => setSmtpUseTls(e.target.checked)} />
+              TLS
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={smtpUseSsl} onChange={(e) => setSmtpUseSsl(e.target.checked)} />
+              SSL
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleSaveSettings} disabled={savingSettings}>
+              {savingSettings ? "Kaydediliyor..." : "SMTP + Ayarları Kaydet"}
+            </Button>
+            <Button variant="outline" onClick={handleTestMail} disabled={testingMail || !testEmail}>
+              {testingMail ? "Gönderiliyor..." : "Test Mail Gönder"}
+            </Button>
+          </div>
         </div>
       ) : null}
 

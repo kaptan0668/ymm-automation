@@ -44,6 +44,7 @@ def me(request):
         {
             "authenticated": True,
             "username": user.username,
+            "email": user.email,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
         }

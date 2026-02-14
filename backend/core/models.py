@@ -144,6 +144,13 @@ class ReportCounterTypeCum(models.Model):
 class AppSetting(models.Model):
     working_year = models.IntegerField(default=default_year, verbose_name="Çalışma yılı")
     reference_year = models.IntegerField(default=default_year, verbose_name="Referans yılı")
+    smtp_host = models.CharField(max_length=255, null=True, blank=True, verbose_name="SMTP host")
+    smtp_port = models.IntegerField(default=587, verbose_name="SMTP port")
+    smtp_user = models.CharField(max_length=255, null=True, blank=True, verbose_name="SMTP kullanıcı")
+    smtp_password = models.CharField(max_length=255, null=True, blank=True, verbose_name="SMTP parola")
+    smtp_use_tls = models.BooleanField(default=True, verbose_name="SMTP TLS")
+    smtp_use_ssl = models.BooleanField(default=False, verbose_name="SMTP SSL")
+    smtp_from_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Gönderen e-posta")
 
     class Meta:
         verbose_name = "Uygulama Ayarı"
@@ -194,6 +201,8 @@ class Document(AuditBase):
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
     card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
+    note_contact_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili kişi")
+    note_contact_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili e-posta")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
@@ -267,6 +276,8 @@ class Report(AuditBase):
     subject = models.CharField(max_length=255, null=True, blank=True, verbose_name="Konu")
     description = models.TextField(null=True, blank=True, verbose_name="Açıklama")
     card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
+    note_contact_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili kişi")
+    note_contact_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili e-posta")
     delivery_method = models.CharField(
         max_length=16,
         choices=DELIVERY_METHODS,
@@ -404,6 +415,8 @@ class Contract(AuditBase):
     size = models.IntegerField(null=True, blank=True, verbose_name="Boyut (byte)")
     file_url = models.URLField(null=True, blank=True, verbose_name="Dosya URL")
     card_note = models.TextField(null=True, blank=True, verbose_name="Kart notu")
+    note_contact_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili kişi")
+    note_contact_email = models.CharField(max_length=255, null=True, blank=True, verbose_name="Not ilgili e-posta")
 
     class Meta:
         verbose_name = "Sözleşme"

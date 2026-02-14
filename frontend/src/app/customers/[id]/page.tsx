@@ -106,6 +106,8 @@ export default function CustomerCardPage() {
   const [cardNote, setCardNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteNotice, setNoteNotice] = useState<string | null>(null);
+  const [manualEmails, setManualEmails] = useState("");
+  const [mailSending, setMailSending] = useState(false);
 
   const [showDocs, setShowDocs] = useState(false);
   const [showReports, setShowReports] = useState(false);
@@ -256,6 +258,24 @@ export default function CustomerCardPage() {
     setNoteFiles(updatedNoteFiles);
   }
 
+  async function handleSendNoteMail() {
+    if (!customer) return;
+    setMailSending(true);
+    setNoteNotice(null);
+    try {
+      await apiFetch(`/api/customers/${customer.id}/send_note_mail/`, {
+        method: "POST",
+        body: JSON.stringify({ extra_emails: manualEmails || null })
+      });
+      setNoteNotice("Not e-postası gönderildi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setNoteNotice(`Mail gönderilemedi: ${msg}`);
+    } finally {
+      setMailSending(false);
+    }
+  }
+
   const relatedNotes = useMemo(() => {
     const items: Array<{ source: string; title: string; note: string }> = [];
     for (const c of contracts) {
@@ -363,8 +383,16 @@ export default function CustomerCardPage() {
           onChange={(e) => setCardNote(e.target.value)}
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Ek e-posta (virgülle)"
+            value={manualEmails}
+            onChange={(e) => setManualEmails(e.target.value)}
+          />
           <Button variant="outline" onClick={handleSaveCardNote} disabled={noteSaving}>
             {noteSaving ? "Kaydediliyor..." : "Notu Kaydet"}
+          </Button>
+          <Button variant="outline" onClick={handleSendNoteMail} disabled={mailSending}>
+            {mailSending ? "Gönderiliyor..." : "Notu Mail Gönder"}
           </Button>
           <input
             type="file"
