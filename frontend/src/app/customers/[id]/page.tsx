@@ -256,13 +256,6 @@ export default function CustomerCardPage() {
     setNoteFiles(updatedNoteFiles);
   }
 
-  if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!customer) return <div>Yükleniyor...</div>;
-
-  const docCount = docs.length;
-  const reportCount = reports.length;
-  const fileCount = files.length;
-  const contractCount = contracts.length;
   const relatedNotes = useMemo(() => {
     const items: Array<{ source: string; title: string; note: string }> = [];
     for (const c of contracts) {
@@ -295,6 +288,13 @@ export default function CustomerCardPage() {
     return items;
   }, [contracts, docs, reports]);
 
+  if (error) return <div className="text-sm text-red-600">{error}</div>;
+  if (!customer) return <div>Yükleniyor...</div>;
+
+  const docCount = docs.length;
+  const reportCount = reports.length;
+  const fileCount = files.length;
+  const contractCount = contracts.length;
   function formatPeriod(item: ContractRow) {
     if (item.period_start_month && item.period_start_year && item.period_end_month && item.period_end_year) {
       const s = `${String(item.period_start_month).padStart(2, "0")}/${item.period_start_year}`;
